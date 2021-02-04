@@ -64,6 +64,78 @@ def import_wsdata_online(location, year):
         wsdata['Date'].loc[j - 1] = dt(2018, 1, 1) + timedelta(days = j - 1)
     return wsdata
 
+def Create_weather_array(WeatherArray, Average_weather_array, First_day, DateP, final_day):
+    #WeatherArray = WeatherArray.reset_index()
+    #del  WeatherArray['index']
+
+    Average_weather_array = Average_weather_array.reset_index()
+    del Average_weather_array['index']
+    
+    
+    ws_date = WeatherArray['Date']                   #the date of the record, mm/dd/yyyy
+    WS = WeatherArray['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
+    ET_0 = WeatherArray['et']                        #Reference ET, mm/day, decimal, 8 digits
+    Tmax = WeatherArray['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
+    Tmin = WeatherArray['tmin']                      #Minimum temperature, Celsius, decimal, 8 digits
+    rainfall = WeatherArray['rainfall']              #Rainfall, mm/day, decimal, 8 digits
+    Rain_time = WeatherArray['1/24']                 #Rain time (time of storm), hr, decimal, 5 digits
+    RH_min = WeatherArray['rh']
+
+    adoy=Average_weather_array['DOY']
+    aname = Average_weather_array['StationName']
+    aid = Average_weather_array['sid']
+    aWS = Average_weather_array['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
+    aET_0 = Average_weather_array['et']                        #Reference ET, mm/day, decimal, 8 digits
+    aTmax = Average_weather_array['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
+    aTmin = Average_weather_array['tmin']                     #Minimum temperature, Celsius, decimal, 8 digits
+    arainfall = Average_weather_array['rainfall']              #Rainfall, mm/day, decimal, 8 digits
+    aRain_time = Average_weather_array['1/24']                 #Rain time (time of storm), hr, decimal, 5 digit
+    aRH_min = Average_weather_array['rh']
+
+    length = len(ws_date)
+    indexw = WeatherArray.index.values
+    indexa = Average_weather_array.index.values
+    data_added = False
+    offset = 0
+    for j in range(0, final_day):
+        DateW = DateP + timedelta(days = j + int(First_day))
+        if j < length + offset:
+            if DateW != ws_date[indexw[j-offset]]:
+                doy = DateW.dayofyear
+                offset = offset + 1   
+                new_record = pd.DataFrame([[DateW, aname[doy-1], aid[doy-1], aRH_min[doy-1], aWS[doy-1],
+                        aET_0[doy-1], arainfall[doy-1], aTmax[doy-1], aTmin[doy-1], aRain_time[doy-1]]],
+                        columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24'])
+                WeatherArray = pd.concat([WeatherArray,new_record])
+        else:
+            doy = DateW.dayofyear
+            new_record = pd.DataFrame([[DateW, aname[doy - 1], aid[doy - 1], aRH_min[doy - 1], aWS[doy - 1], 
+                    aET_0[doy - 1], arainfall[doy - 1], aTmax[doy - 1], aTmin[doy - 1], aRain_time[doy - 1]]],
+                    columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24']) 
+            WeatherArray = pd.concat([WeatherArray,new_record])
+     
+    WeatherArray = WeatherArray.sort_values('Date')
+    WeatherArray = WeatherArray.reset_index()
+    del WeatherArray['index']
+    for j in range(0, final_day):
+        DateW = DateP + timedelta(days = j + int(First_day))
+        doy = DateW.dayofyear
+        if WeatherArray['rh'].loc[j] < 0 or WeatherArray['rh'].loc[j] > 100:
+            WeatherArray['rh'].loc[j] = aRH_min[doy - 1]
+        if WeatherArray['wind_speed'].loc[j] < 0 or WeatherArray['wind_speed'].loc[j] > 50:
+            WeatherArray['wind_speed'].loc[j] = aWS[doy - 1]
+        if WeatherArray['et'].loc[j] < 0 or WeatherArray['et'].loc[j] > 100:
+            WeatherArray['et'].loc[j] = aET_0[doy - 1]
+        if WeatherArray['rainfall'].loc[j] < 0 or WeatherArray['rainfall'].loc[j] > 100:
+            WeatherArray['rainfall'].loc[j] = arainfall[doy - 1]
+        if WeatherArray['tmax'].loc[j] < 0 or WeatherArray['tmax'].loc[j] > 140:
+            WeatherArray['tmax'].loc[j] = aTmax[doy - 1]
+        if WeatherArray['tmin'].loc[j] < 0 or WeatherArray['tmin'].loc[j] > 100:
+            WeatherArray['tmin'].loc[j] = aTmin[doy - 1]
+        if WeatherArray['1/24'].loc[j] < 0 or WeatherArray['1/24'].loc[j] > 100:
+            WeatherArray['1/24'].loc[j] = aRain_time[doy - 1]
+    return WeatherArray
+
 def Check_output_arrays_for_last_DOE_in_previous_output(Output_Array, Output_Layer_Array, final_day):
     length = len(Output_Layer_Array)
     if length > 0:
@@ -240,77 +312,7 @@ def create_clovis_weather_array(ClovisArray, Average_weather_array, First_day, D
     WeatherArray=Clovis_eto(ClovisArray)
     return WeatherArray
     
-def Create_weather_array(WeatherArray, Average_weather_array, First_day, DateP, final_day):
-    #WeatherArray = WeatherArray.reset_index()
-    #del  WeatherArray['index']
 
-    Average_weather_array = Average_weather_array.reset_index()
-    del Average_weather_array['index']
-    
-    
-    ws_date = WeatherArray['Date']                   #the date of the record, mm/dd/yyyy
-    WS = WeatherArray['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
-    ET_0 = WeatherArray['et']                        #Reference ET, mm/day, decimal, 8 digits
-    Tmax = WeatherArray['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
-    Tmin = WeatherArray['tmin']                      #Minimum temperature, Celsius, decimal, 8 digits
-    rainfall = WeatherArray['rainfall']              #Rainfall, mm/day, decimal, 8 digits
-    Rain_time = WeatherArray['1/24']                 #Rain time (time of storm), hr, decimal, 5 digits
-    RH_min = WeatherArray['rh']
-
-    adoy=Average_weather_array['DOY']
-    aname = Average_weather_array['StationName']
-    aid = Average_weather_array['sid']
-    aWS = Average_weather_array['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
-    aET_0 = Average_weather_array['et']                        #Reference ET, mm/day, decimal, 8 digits
-    aTmax = Average_weather_array['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
-    aTmin = Average_weather_array['tmin']                     #Minimum temperature, Celsius, decimal, 8 digits
-    arainfall = Average_weather_array['rainfall']              #Rainfall, mm/day, decimal, 8 digits
-    aRain_time = Average_weather_array['1/24']                 #Rain time (time of storm), hr, decimal, 5 digit
-    aRH_min = Average_weather_array['rh']
-
-    length = len(ws_date)
-    indexw = WeatherArray.index.values
-    indexa = Average_weather_array.index.values
-    data_added = False
-    offset = 0
-    for j in range(0, final_day):
-        DateW = DateP + timedelta(days = j + int(First_day))
-        if j < length + offset:
-            if DateW != ws_date[indexw[j-offset]]:
-                doy = DateW.dayofyear
-                offset = offset + 1   
-                new_record = pd.DataFrame([[DateW, aname[doy-1], aid[doy-1], aRH_min[doy-1], aWS[doy-1],
-                        aET_0[doy-1], arainfall[doy-1], aTmax[doy-1], aTmin[doy-1], aRain_time[doy-1]]],
-                        columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24'])
-                WeatherArray = pd.concat([WeatherArray,new_record])
-        else:
-            doy = DateW.dayofyear
-            new_record = pd.DataFrame([[DateW, aname[doy - 1], aid[doy - 1], aRH_min[doy - 1], aWS[doy - 1], 
-                    aET_0[doy - 1], arainfall[doy - 1], aTmax[doy - 1], aTmin[doy - 1], aRain_time[doy - 1]]],
-                    columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24']) 
-            WeatherArray = pd.concat([WeatherArray,new_record])
-     
-    WeatherArray = WeatherArray.sort_values('Date')
-    WeatherArray = WeatherArray.reset_index()
-    del WeatherArray['index']
-    for j in range(0, final_day):
-        DateW = DateP + timedelta(days = j + int(First_day))
-        doy = DateW.dayofyear
-        if WeatherArray['rh'].loc[j] < 0 or WeatherArray['rh'].loc[j] > 100:
-            WeatherArray['rh'].loc[j] = aRH_min[doy - 1]
-        if WeatherArray['wind_speed'].loc[j] < 0 or WeatherArray['wind_speed'].loc[j] > 50:
-            WeatherArray['wind_speed'].loc[j] = aWS[doy - 1]
-        if WeatherArray['et'].loc[j] < 0 or WeatherArray['et'].loc[j] > 100:
-            WeatherArray['et'].loc[j] = aET_0[doy - 1]
-        if WeatherArray['rainfall'].loc[j] < 0 or WeatherArray['rainfall'].loc[j] > 100:
-            WeatherArray['rainfall'].loc[j] = arainfall[doy - 1]
-        if WeatherArray['tmax'].loc[j] < 0 or WeatherArray['tmax'].loc[j] > 140:
-            WeatherArray['tmax'].loc[j] = aTmax[doy - 1]
-        if WeatherArray['tmin'].loc[j] < 0 or WeatherArray['tmin'].loc[j] > 100:
-            WeatherArray['tmin'].loc[j] = aTmin[doy - 1]
-        if WeatherArray['1/24'].loc[j] < 0 or WeatherArray['1/24'].loc[j] > 100:
-            WeatherArray['1/24'].loc[j] = aRain_time[doy - 1]
-    return WeatherArray
     
 def hg(a, b, C, z):
     value = 1
@@ -544,26 +546,28 @@ class fields:
         self.Num_layers = Field_Array['NumLayers']                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
         self.TEW = Field_Array['TEW'] #Total evaporable water in the evaporation layer (read in as cm, decimal 8 digits)
         self.REW = Field_Array['REW'] #Readily evaporable water in the evaporation layer (read in as cm, decimal, 8 digits)
-        self.Keep_equilibrium_layers_out_of_root_zone = Field_Array['KeepEquilibriumLayersOutOfRootZone'] #Boolean that is true if equilibrium layers in drainage simulation are not allowed to enter the root zone
-        self.Max_layer_of_equilibrium_layers = Field_Array['MaxLayerEquilibrium'] #Integer that specifies the maximum number of layers that are in equilibrium with the water table. 
-        self.Water_table_simulation = Field_Array['water_table_sim'] #Boolean that is true if there is a water table and leaching is restricted by drainage system
-        self.Init_zwt = Field_Array['Init_zwt'] #Initial height of the water table on the day before planting (decimal, 5 digits, meters)
-        self.Drain_elevation = Field_Array['drain_elev'] #Elevation of the drain within  the soil profile (decimal, 5 digits, meters)
-        self.Kirkham_rate = Field_Array['kirkham_rate'] #Boolean that is true if the Kirkham algorithm is used to calculate drainage rate
-        self.Drain_rate = Field_Array['drain_rate'] #A multiplier that calculates drainage rate as a function of water table height (decimal, 8 digits, dimensionless) if not using Kirkham method
-        self.Drain_imp = Field_Array['drain_imp'] #The elevation of the drain above the impermeable layer (decimal, 8 digits, meters), currently used in Kirkham form
-        self.L_drain = Field_Array['l_drain'] #The distance between drains (decimal, 8 digits, m), currently used in Kirkham form
-        self.Keff_horizontal = Field_Array['keff_horiz'] #Effective horizontal conductivity (m/day, 8 digits, decimal), currently used in Kirkham form
-        self.re = Field_Array['re'] #Effective drain radius, m (decimal, 8 digits)
-        self.Kirkham_F = Field_Array['kirkham_f'] #Calculated value based on drainage geometry (m/day, decimal, 8 digits)
-        self.Fraction_of_saturation_for_equilibrium = Field_Array['fraction_sat'] #Fraction of saturation for equilibrium, fraction, 5 digits
-        self.Equil_max_init = Field_Array['Equil_max_init'] #this is the fraction of water in the soil, above which a layer is considered in equilibrium with the water table, fraction, 5 digits
         self.SCScurveNumber = Field_Array['SCScurveNumber']              #Boolean to determine whether SCS curve numbers are used to determine infiltration
         self.SCSa = Field_Array['SCSa']                                  #The SCS a value for Kostiakov infiltration (decimal, 5 digits)
         self.SCSb = Field_Array['SCSb']                                  #The SCS b value for Kostiakov infiltration (decimal, 5 digits)
         self.H0 = Field_Array['PondedDepth']                    #Depth of water ponded in field if Green Ampt is used to calculate infiltration (I do not know why this is cm but it is) (decimal 5 digits)
         self.SAV = Field_Array['SAV']                                    #Suction at wetting front (cm) decimal 5 digits, used for Green Ampt infiltration
-
+        self.Water_table_simulation = Field_Array['Water_table_simulation'] #Boolean that is true if there is a water table and leaching is restricted by drainage system
+        self.Begin_equil = Field_Array['Begin_with_soil_water_in_equilibrium_with_WT']
+        self.Init_zwt = Field_Array['Initial_water_table_elevation'] #Initial height of the water table on the day before planting (decimal, 5 digits, meters)
+        self.Drain_elevation = Field_Array['Drain_Elevation'] #Elevation of the drain within  the soil profile (decimal, 5 digits, meters)
+        self.Kirkham_rate = Field_Array['Drainage_controlled_by_Kirkham'] #Boolean that is true if the Kirkham algorithm is used to calculate drainage rate
+        self.Drain_rate = Field_Array['Multiplier_for_linear'] #A multiplier that calculates drainage rate as a function of water table height (decimal, 8 digits, dimensionless) if not using Kirkham method
+        self.Drain_imp = Field_Array['Drain_elevation_above_impermeable'] #The elevation of the drain above the impermeable layer (decimal, 8 digits, meters), currently used in Kirkham form
+        self.L_drain = Field_Array['Distance_between_drains'] #The distance between drains (decimal, 8 digits, m), currently used in Kirkham form
+        self.Keff_horizontal = Field_Array['Effective_lateral_K'] #Effective horizontal conductivity (m/day, 8 digits, decimal), currently used in Kirkham form
+        self.re = Field_Array['Effective_drain_radius'] #Effective drain radius, m (decimal, 8 digits)
+        self.Horizontal_distance_from_drain = Field_Array['Horizontal_distance_from_drain']
+        self.Kirkham_F = Field_Array['Kirkham_f'] #Calculated value based on drainage geometry (m/day, decimal, 8 digits)
+        self.Max_layer_of_equilibrium_layers = Field_Array['Max_equilibrium_layer']
+        self.Equil_max_init = Field_Array['Starting_equilibrium_layer'] #this is the fraction of water in the soil, above which a layer is considered in equilibrium with the water table, fraction, 5 digits
+        self.Keep_equilibrium_layers_out_of_root_zone = Field_Array['Keep_equilibrium_layers_out_of_root_zone'] #Boolean that is true if equilibrium layers in drainage simulation are not allowed to enter the root zone
+        self.Fraction_of_saturation_for_equilibrium = Field_Array['Fraction_of_saturation_for_equilibrium'] #Fraction of saturation for equilibrium, fraction, 5 digits
+        self.Continue_drainage_rate = Field_Array['Continue_drainage_rate']
 class spatial:
     def __init__(self, SpatialArray):
         self.PlantingIDS = np.array(SpatialArray['PlantingID'])                      #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
