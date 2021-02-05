@@ -229,7 +229,7 @@ def Find_irrigation_group(Spatial_Array):
 
 def Create_soil_array(SoilArray, FieldArray):
 
-    Num_layers = FieldArray['NumLayers']
+    Num_layers = FieldArray['Num_layers']
     SoilArray = SoilArray.sort_values('LayerNumber')
     SoilArray = SoilArray.reset_index()
     del SoilArray['index']
@@ -543,13 +543,13 @@ class fields:
         self.FieldIDF = Field_Array['fid'][0]                                #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.FieldNameF = Field_Array['Field Name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
         self.AccountIDF = Field_Array['aid']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.Num_layers = Field_Array['NumLayers']                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
+        self.Num_layers = Field_Array['Num_layers']                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
         self.TEW = Field_Array['TEW'] #Total evaporable water in the evaporation layer (read in as cm, decimal 8 digits)
         self.REW = Field_Array['REW'] #Readily evaporable water in the evaporation layer (read in as cm, decimal, 8 digits)
-        self.SCScurveNumber = Field_Array['SCScurveNumber']              #Boolean to determine whether SCS curve numbers are used to determine infiltration
-        self.SCSa = Field_Array['SCSa']                                  #The SCS a value for Kostiakov infiltration (decimal, 5 digits)
-        self.SCSb = Field_Array['SCSb']                                  #The SCS b value for Kostiakov infiltration (decimal, 5 digits)
-        self.H0 = Field_Array['PondedDepth']                    #Depth of water ponded in field if Green Ampt is used to calculate infiltration (I do not know why this is cm but it is) (decimal 5 digits)
+        self.Intake_family = Field_Array['Intake_family']              #Boolean to determine whether SCS curve numbers are used to determine infiltration
+        self.NRCS_a = Field_Array['NRCS_a']                                  #The SCS a value for Kostiakov infiltration (decimal, 5 digits)
+        self.NRCS_b = Field_Array['NRCS_b']                                  #The SCS b value for Kostiakov infiltration (decimal, 5 digits)
+        self.H0 = Field_Array['H0']                    #Depth of water ponded in field if Green Ampt is used to calculate infiltration (I do not know why this is cm but it is) (decimal 5 digits)
         self.SAV = Field_Array['SAV']                                    #Suction at wetting front (cm) decimal 5 digits, used for Green Ampt infiltration
         self.Water_table_simulation = Field_Array['Water_table_simulation'] #Boolean that is true if there is a water table and leaching is restricted by drainage system
         self.Begin_equil = Field_Array['Begin_with_soil_water_in_equilibrium_with_WT']

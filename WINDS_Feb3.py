@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 #import WINDSfunctionsandclasses13.py
 
 #exec(open("WINDSfunctionsandclasses_July25.py").read())
-pathprefix='C:\\Users\\pete\\desktop\\'
+pathprefix='/home/ecoslacker/Documents/WINDS_Data/'
 # sys.path.append(pathprefix)
 
 db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevzppe.us-west-1.rds.amazonaws.com:3306/winds_test')
