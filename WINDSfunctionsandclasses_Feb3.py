@@ -226,6 +226,21 @@ def Find_irrigation_group(Spatial_Array):
     return group_letter
    
 
+def wetting_fraction(self):
+    for j in range(1, self.max_array_length + 1):
+        for k in range(1, int(self.Num_layers) + 2):
+            if j < FW_phase_DOY_1:
+                FW_layers[j][k] = Temp_fractions[5][k]
+            elif j < FW_phase_DOY_2:
+                FW_layers[j][k] = Temp_fractions[6][k]
+            elif j < FW_phase_DOY_3:
+                FW_layers[j][k] = Temp_fractions[7][k]
+            elif j < FW_phase_DOY_4:
+                FW_layers[j][k] = Temp_fractions[8][k]
+            else:
+                FW_layers[j][k] = Temp_fractions[9][k]
+            if FW_layers[j][k] < 1:
+                dry_soil_check[j][k] = True
 
 def Create_soil_array(SoilArray, FieldArray):
 
@@ -656,12 +671,6 @@ class soil:
        
         self.max_array_length = int(self.Max_Days)
         self.FW_layers = np.zeros((self.max_array_length + 1, self.Num_layers + 2))
-        for j in range(1, self.max_array_length + 1):
-            for k in range(1, int(self.Num_layers) + 2):
-                if j < self.switch_wetting_phase:
-                    self.FW_layers[j][k] = self.Fw1[k]
-                else:
-                    self.FW_layers[j][k] = self.Fw2[k]
 
         
 class model(plantings, fields, soil, weather):
