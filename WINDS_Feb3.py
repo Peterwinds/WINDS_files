@@ -81,7 +81,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                #                        P.First_day, P.DateP[i], P.final_day) 
             else:
                 Weather_Array_in = wmf.Create_weather_array(WeatherArray.loc[(WeatherArray['StationID']==P.StationIDP[i]) & (WeatherArray['Date'] > P.DateP[i] + timedelta(int(P.First_day - 1))) & (WeatherArray['Date'] <= P.DateP[i] + timedelta(int(P.First_day + P.final_day)))],
-                                       Average_Weather_Array.loc[Average_Weatfeher_Array['sid']==P.StationIDP[i]],
+                                       Average_Weather_Array.loc[Average_Weather_Array['sid']==P.StationIDP[i]],
                                        P.First_day, P.DateP[i], P.final_day) 
             
             Soil_Array_in = wmf.Create_soil_array(Soil_Array.loc[(Soil_Array['FieldID']==P.FieldIDP[i]) & (Soil_Array['SoilGroup']==Soil_group_letter)],

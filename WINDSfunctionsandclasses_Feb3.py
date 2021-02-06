@@ -230,15 +230,15 @@ def wetting_fraction(self):
     for j in range(1, self.max_array_length + 1):
         for k in range(1, int(self.Num_layers) + 2):
             if j < FW_phase_DOY_1:
-                FW_layers[j][k] = Temp_fractions[5][k]
+                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_1,k]
             elif j < FW_phase_DOY_2:
-                FW_layers[j][k] = Temp_fractions[6][k]
+                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_2,k]
             elif j < FW_phase_DOY_3:
-                FW_layers[j][k] = Temp_fractions[7][k]
+                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_3, k]
             elif j < FW_phase_DOY_4:
-                FW_layers[j][k] = Temp_fractions[8][k]
+                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_4, k]
             else:
-                FW_layers[j][k] = Temp_fractions[9][k]
+                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_5, k]
             if FW_layers[j][k] < 1:
                 dry_soil_check[j][k] = True
 
