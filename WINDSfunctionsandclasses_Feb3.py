@@ -242,6 +242,23 @@ def wetting_fraction(self):
             if FW_layers[j][k] < 1:
                 dry_soil_check[j][k] = True
 
+def create_wetted_array(WettingArray, days, Num_layers, P1, P2, P3, P4, P5):
+    FW_layers = np.zeros((int(days) + 1, int(Num_layers) + 1))
+    for i in range(1, 10):
+        for k in range(1, Num_layers + 1):
+            if i < P1:
+                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 1)].values)
+            elif i < P2:
+                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 2)].values)
+            elif i < P3:
+                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 3)].values)
+            elif i < P4:
+                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 4)].values)
+            else:
+                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 5)].values) 
+            FW_layers[i][k] = a
+        return FW_layers
+
 def Create_soil_array(SoilArray, FieldArray):
 
     Num_layers = FieldArray['Num_layers']
@@ -1506,6 +1523,8 @@ def KirkhamSolution(x, S, r, h, k, re):
 
     Kirkham_height = re * 2 * S * Kirkham_height / (k * 3.14159)
     return Kirkham_height  
+
+
 
 # def Percent_depletion():
 #     self.Planting= np.zeros(100)

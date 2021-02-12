@@ -30,7 +30,7 @@ Field_Array=pd.read_sql('SELECT * from fields',con=db)
 Output_Array=pd.read_sql('SELECT * from output',con=db)
 Output_Layer_Array=pd.read_sql('SELECT * from TempLayerOutput',con=db)
 ClovisArray=pd.read_sql('SELECT * from Clovis_weather', con=db)
-
+WettingArray=pd.read_sql('SELECT * from Wetted_fractions', con=db)
 
 now = dt.today()
 currentDate = now.strftime("%Y-%m-%d")
@@ -102,6 +102,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
             M.PlantingIDO[0] = P.PlantingIDP[i]
             M.PlantingNameO[0] = P.PlantingName[i]
             M.LocationO[0] = locate
+            FW_layers = wmf.create_wetted_array(WettingArray, int(P.final_day), M.Num_layers, 500, 1000, 1000, 1000, 1000) 
            
             for j in range(1, int(P.final_day) - 1):
                 BL: int = int(M.Bottom_layer[j])
