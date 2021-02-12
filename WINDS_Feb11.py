@@ -102,8 +102,9 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
             M.PlantingIDO[0] = P.PlantingIDP[i]
             M.PlantingNameO[0] = P.PlantingName[i]
             M.LocationO[0] = locate
-            FW_layers = wmf.create_wetted_array(WettingArray, int(P.final_day), M.Num_layers, 500, 1000, 1000, 1000, 1000) 
-           
+            Name = "Guar_fraction"
+            FW_layers = wmf.create_wetted_array(WettingArray, int(P.final_day), M.Num_layers, Name, 500, 1000, 1000, 1000, 1000) 
+            
             for j in range(1, int(P.final_day) - 1):
                 BL: int = int(M.Bottom_layer[j])
                 M.PlantingIDO[j] = P.PlantingIDP[i]
@@ -120,7 +121,6 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                             M.Root[j] = Root_measured
                         if Update_Crop_height: 
                             M.Crop_height[j] = Crop_height_measured
-                        
                 M.Depletion_total[j - 1] =  0
                 for k in range(M.Num_layers + 1, BL - 1, -1):
                     M.Percent_depletion[j][k] = (M.FC[k] - M.WC[j-1][k]) /(M.FC[k] - M.PWP[k]) * 100
@@ -147,8 +147,8 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 
                 if int(M.Select_Kcb) == 6:
                     M.Ps[j] = 0.75
-                   
-                #this is for showing the dynamic simulation
+                
+                #this is for showing the dynamic simulation 
                 
                 M.RAWsum[j] = M.TAWsum[j] * M.Ps[j]
                 M.Ks_water_total[j] = (M.Total_TAW_Fw[j][BL] - M.Depletion_total[j - 1]) / ((1 - M.Ps[j]) * M.Total_TAW_Fw[j][BL])

@@ -242,22 +242,24 @@ def wetting_fraction(self):
             if FW_layers[j][k] < 1:
                 dry_soil_check[j][k] = True
 
-def create_wetted_array(WettingArray, days, Num_layers, P1, P2, P3, P4, P5):
+def create_wetted_array(WA, days, Num_layers, NameF, P1, P2, P3, P4, P5):
     FW_layers = np.zeros((int(days) + 1, int(Num_layers) + 1))
+    Inter = 'Fraction_wetted_interval'
+    F_name = 'Fraction_wetted_name'
     for i in range(1, 10):
         for k in range(1, Num_layers + 1):
             if i < P1:
-                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 1)].values)
+                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 1) & (WA[F_name] == NameF)].values)
             elif i < P2:
-                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 2)].values)
+                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 2) & (WA[F_name] == NameF)].values)
             elif i < P3:
-                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 3)].values)
+                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 3) & (WA[F_name] == NameF)].values)
             elif i < P4:
-                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 4)].values)
+                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 4) & (WA[F_name] == NameF)].values)
             else:
-                a = float(WettingArray['Fraction'][(WettingArray['Layer'] == k) & (WettingArray['Fraction_wetted_interval'] == 5)].values) 
+                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 5) & (WA[F_name] == NameF)].values)
             FW_layers[i][k] = a
-        return FW_layers
+    return
 
 def Create_soil_array(SoilArray, FieldArray):
 
@@ -860,8 +862,8 @@ class model(plantings, fields, soil, weather):
             self.CumIrrN[0] = OutputArray['CumIrrN']             #Cumulative nitrate added by irrigation to soil profile during season, mg/L m, decimal, 8 digits
             self.CumDrnN[0] = OutputArray['CumDrnN']             #Cumulative nitrate removed by drainage from soil profile during season, mg/L m, decimal, 8 digits
             self.CumChangeN[0] = OutputArray['CumChangeN']       #Cumulative nitrate change in soil profile during season, mg/L m, decimal, 8 digits
-
         self.DOY[0] = self.datelist[0].timetuple().tm_yday
+        
         for j in range(1, final_day - 1):
             adj_j = j + Last_DOE
             if int(self.Select_Kcb) == 2:
@@ -885,7 +887,7 @@ class model(plantings, fields, soil, weather):
                 else:
                     self.Kcb[j] = self.MKcb_2
                     
-#1 - c
+#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c
                 if adj_j < 0:
                     self.one_minus_c[j] = 1
                 elif adj_j < self.ICP:
