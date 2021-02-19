@@ -17,7 +17,7 @@ db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevz
 
 #======================Block 0: Adding Libraries=============================
 
-import WINDSfunctionsandclasses_Feb3  as wmf
+import WINDSfunctionsandclasses_Feb11  as wmf
 
 Planting_Array=pd.read_sql('SELECT * from plantings',con=db)  #Reads all data from mysql db
 Soil_Array=pd.read_sql('SELECT * from field_soil_layers',con=db)
@@ -128,7 +128,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 M.Percent_depletion_total[j-1] = M.Depletion_total[j-1] / M.Total_TAW_Fw[j][BL] * 100      
                 if M.Neglect_upper_layer_in_depletion_calc == True:
                     M.Percent_depletion_total[j - 1] = (M.Depletion_total[j - 1] - (M.FC[M.Num_layers + 1] - M.WC[j - 1][M.Num_layers + 1]) * M.dz[M.Num_layers + 1] * M.Fw_y[M.Num_layers + 1]) / (M.Total_TAW_Fw[j][BL] - M.TAW[M.Num_layers + 1] * M.Fw_y[M.Num_layers + 1]) * 100
-                if M.Update_P == True:
+                if M.adjust_P == True:
                     if M.Ksat[M.Num_layers + 1] * 100 / 24 > 50:
                         p_adj = M.pTable22 + 0.1
                     elif (M.Ksat[M.Num_layers + 1] * 100 / 24) > 25:
@@ -723,6 +723,6 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
 
             
            
-            temp_layer_output.to_sql('TempLayerOutput', db, if_exists='append', index = False)
-            temp_output.to_sql('TempOutput',db,if_exists='append', index = False)
+            # temp_layer_output.to_sql('TempLayerOutput', db, if_exists='append', index = False)
+            # temp_output.to_sql('TempOutput',db,if_exists='append', index = False)
 

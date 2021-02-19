@@ -875,7 +875,7 @@ class model(plantings, fields, soil, weather):
                 elif adj_j < self.IP:
                     self.Kcb[j] = self.IKcb
                 elif adj_j < self.IP + self.DP:
-                    self.Kcb[j] = self.IKcb + (adj_j - (self.IP)) / (self.DP) * (self.MKcb - self.IKcb)
+                    self.Kcb[j] = self.IKcb + (adj_j - self.IP) / (self.DP) * (self.MKcb - self.IKcb)
                 elif adj_j < self.IP + self.DP + self.MP:
                     self.Kcb[j] = self.MKcb
                 elif adj_j < self.IP + self.DP + self.MP + self.LP:
@@ -883,9 +883,13 @@ class model(plantings, fields, soil, weather):
                 elif adj_j < self.IP + self.DP + self.MP + self.LP + self.EP:
                     self.Kcb[j] = self.EKcb
                 elif adj_j < self.IP + self.DP + self.MP + self.LP + self.EP + self.DP_2:
-                    self.Kcb[j] = self.EKcb + (adj_j - (self.IP + self.DP + self.MP + self.LP + self.EP)) / (DP_2) * (self.MKcb_2 - self.EKcb)
-                else:
+                    self.Kcb[j] = self.EKcb + (adj_j - (self.IP + self.DP + self.MP + self.LP + self.EP)) / (self.DP_2) * (self.MKcb_2 - self.EKcb)
+                elif adj_j < self.IP + self.DP + self.MP + self.LP + self.EP + self.DP_2 + self.MP_2:
                     self.Kcb[j] = self.MKcb_2
+                elif adj_j < self.IP + self.DP + self.MP + self.LP + self.EP + self.DP_2 + self.MP_2 + self.LP_2:
+                    self.Kcb[j] = self.MKcb_2 + (adj_j - (self.IP + self.DP + self.MP + self.LP + self.EP + self.DP_2 + self.MP_2 + self.PD)) / (self.LP_2) * (self.EKcb_2 - self.MKcb_2)
+                else:
+                    self.Kcb[j] = self.EKcb_2
                     
 #1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c#1 - c
                 if adj_j < 0:
@@ -893,11 +897,11 @@ class model(plantings, fields, soil, weather):
                 elif adj_j < self.ICP:
                     self.one_minus_c[j] = self.IC
                 elif adj_j < self.ICP + self.DCP:
-                    self.one_minus_c[j] = 1 - (adj_j - self.ICP) / self.DCP * (self.IC - self.MC)
-                elif adj_j < self.DCP + self.MCP:
+                    self.one_minus_c[j] = self.IC - (adj_j - self.ICP) / self.DCP * (self.IC - self.MC)
+                elif adj_j < self.ICP + self.DCP + self.MCP:
                     self.one_minus_c[j] = self.MC
-                elif adj_j < self.DCP + self.MCP + self.ECP:
-                    self.one_minus_c[j] = self.MC - (adj_j - self.DCP - self.MCP) / ECP * (self.MC - self.EC)
+                elif adj_j < self.ICP + self.DCP + self.MCP + self.ECP:
+                    self.one_minus_c[j] = self.MC - (adj_j - self.ICP - self.DCP - self.MCP) / self.ECP * (self.MC - self.EC)
                 else:
                     self.one_minus_c[j] = self.EC
 #crop height
@@ -910,11 +914,11 @@ class model(plantings, fields, soil, weather):
                 elif adj_j < self.DCP + self.MCP + self.ICP:
                     self.Crop_height[j] = self.midH
                 elif adj_j < self.DCP + self.MCP + self.ICP + self.ERH:
-                    self.Crop_height[j] = self.midH + (adj_j - self.ICP - self.DCP - self.MCP) / self.ERH * (self.endH - self.midH)
+                    self.Crop_height[j] = self.midH + (adj_j - self.ICP - self.DCP - self.MCP) / self.ECP * (self.endH - self.midH)
                 else:
                     self.Crop_height[j] = self.endH
 #'roots
-                if adj_j < PD:
+                if adj_j < 0:
                     self.Root[j] = 0
                 elif adj_j < self.ICP:
                     self.Root[j] = self.IR * 1000
@@ -927,7 +931,7 @@ class model(plantings, fields, soil, weather):
                 else:
                     self.Root[j] = self.FR * 1000
                     
-            self.Ps[1] = self.pTable22                    
+            self.Ps[1] = self.pTable22                
         
         if self.Salinity_simulation == True:
             if self.WasteAppTF == True:
