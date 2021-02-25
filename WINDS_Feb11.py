@@ -32,7 +32,7 @@ Output_Layer_Array=pd.read_sql('SELECT * from TempLayerOutput',con=db)
 ClovisArray=pd.read_sql('SELECT * from Clovis_weather', con=db)
 WettingArray=pd.read_sql('SELECT * from Wetted_fractions', con=db)
 
-now = dt.today()
+now = dt.today() 
 currentDate = now.strftime("%Y-%m-%d")
 
 #excel_path = pathprefix + 'WINDS guayule_guarNM.xlsx' 
