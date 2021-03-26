@@ -13,7 +13,7 @@ myfile1="Plantings.csv"
 df_file=pd.read_csv(myfile1,sep=",")
 
 
-df_file.to_sql(name='plantings',con=db,if_exists='append',index=False)  #test table is the name of the table you want, it will auto append if the table exists
+df_file.to_sql(name='plantings2',con=db,if_exists='append',index=False)  #test table is the name of the table you want, it will auto append if the table exists
 
 #if_exists{‘fail’, ‘replace’, ‘append’}, default ‘fail’
 #How to behave if the table already exists.
