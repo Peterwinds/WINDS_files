@@ -405,7 +405,7 @@ class plantings:
         self.LastSimulatedDOE = PlantingArray['LastSimulatedDOE']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.LastSimulatedDate = PlantingArray['LastSimulatedDate']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
         self.RunPlanting = PlantingArray['RunPlanting']                 #A Boolean that specifies whether a simulation should take place
-        self.RunToCurrentDay = int(PlantingArray['RunToCurrentDay'])
+        self.RunToCurrentDay = PlantingArray['RunToCurrentDay']
         self.ForecastDays = PlantingArray['ForecastDays']                   #The number of days ahead of the present day (integer) for which the model should predict growth, water use, and irrigations
         self.PlantingIDP = PlantingArray['pid']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.PlantingName = PlantingArray['Planting Name']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
@@ -503,6 +503,7 @@ class plantings:
 #Salinity parameters
         self.ECiw = PlantingArray['Irrigation_water_EC'] #Salinity of the irrigation water, ranges from 0 to 5, decimal, dS/m, 5 digits
         self.Max_S = PlantingArray['Maximum_soluble_EC_act'] #Maximum solubility of salts in soil solution, actual salinity, EC, dS/m, 8 digits
+        self.WasteAppTF = 0
         self.Waste_app_date = PlantingArray['Date_of_salinity_application'] #Date of waste (manure) application   mm/dd/yyyy
         self.Waste_sal_kgha = PlantingArray['Rate_of_salinity_application_kgha'] #The kg/ha of salts in waste applied to the field, decimal, 5 digits
         self.Waste_dissolution = PlantingArray['Rate_of_dissolution'] #1/number of days for waste to dissolve, fraction, 5 digits

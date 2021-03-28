@@ -46,10 +46,8 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
     print(P.RunPlanting[i])    
     if (P.RunPlanting[i] == 1): #checks to see whether a planting is active and should be analyzed
         Run_time = int(P.Max_Days[i])
-        print(Run_time)
         P.Set_dates_and_data_sources(i)       
         for kk in range(0, len(Field_Array)):
-            print('made it here')
             field_test = Field_Array.loc[kk]
             if field_test['fid'] == P.FieldIDP[i]:
                 field_index = kk
@@ -69,20 +67,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                                         P.First_day, P.DateP[i], P.final_day) 
             elif P.WeatherStationNameP[i] == 'Clovis':
                 Weather2018 = wmf.Clovis_eto(ClovisArray)
-                Weather_Array_in = wmf.Create_weather_array(Weather2018.loc[(Weather2018['Date'] > (P.DateP[i] + timedelta(int(P.First_day - 1)))) & (Weather2018['Date'] <= (P.DateP[i] + timedelta(int(P.First_day + P.final_day))))],
-                                        Average_Weather_Array.loc[Average_Weather_Array['sid']==P.StationIDP[i]],
-                                        P.First_day, P.DateP[i], P.final_day)
-            elif P.WeatherStationNameP[i] == 'Clovis':
-                Weather2019 = wmf.Clovis_eto(ClovisArray)
-                Weather_Array_in = wmf.Create_weather_array(Weather2019.loc[(Weather2019['Date'] > (P.DateP[i] + timedelta(int(P.First_day - 1)))) & (Weather2019['Date'] <= (P.DateP[i] + timedelta(int(P.First_day + P.final_day))))],
-                                        Average_Weather_Array.loc[Average_Weather_Array['sid']==P.StationIDP[i]],
-                                        P.First_day, P.DateP[i], P.final_day)
-            # To import from online
-           #elif P.WeatherStationNameP[i] == 'Clovis' and P.DateP[i] > dt.datetime(2019,1,1):
-            #   Weather2018 = import_wsdata_online(P.WeatherStationNameP[i], 2018) #make this for clovis.
-             #  Weather_Array_in = create_clovis_weather_array(Weather2018.loc[(Weather2018['Date'] > P.DateP[i] + dt.timedelta(int(P.First_day - 1))) & (Weather2018['Date'] <= P.DateP[i] + dt.timedelta(int(P.First_day + P.final_day)))],
-              #                         Average_Weather_Array.loc[Average_Weather_Array['sid']==P.StationIDP[i]],
-               #                        P.First_day, P.DateP[i], P.final_day) 
+                Weather_Array_in = wmf.Create_weather_array(Weather2018, Average_Weather_Array, P.First_day, P.DateP[i], P.final_day)
             else:
                 Weather_Array_in = wmf.Create_weather_array(WeatherArray.loc[(WeatherArray['StationID']==P.StationIDP[i]) & (WeatherArray['Date'] > P.DateP[i] + timedelta(int(P.First_day - 1))) & (WeatherArray['Date'] <= P.DateP[i] + timedelta(int(P.First_day + P.final_day)))],
                                        Average_Weather_Array.loc[Average_Weather_Array['sid']==P.StationIDP[i]],
