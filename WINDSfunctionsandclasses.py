@@ -971,14 +971,16 @@ class model(plantings, fields, soil, weather):
                     self.Fert3[j] = self.nit_dissolution * self.Fert3_rate
                 self.Fert[j] = self.Fert1[j] + self.Fert2[j] + self.Fert3[j]   
                 
-                if adj_j < self.dev:
+                # if adj_j < self.dev:
+                if adj_j < self.IP:
                     self.Nitrogen_Kcb[j] = 0
-                elif adj_j < self.mid:
-                    self.Nitrogen_Kcb[j] = (self.Kcb_mid - self.Kcb_initial) * ((adj_j - self.dev) / (self.mid - self.dev))
-                elif adj_j < self.lateseas:
-                    self.Nitrogen_Kcb[j] = self.Kcb_mid - self.Kcb_initial
-                elif adj_j < self.endseas:
-                    self.Nitrogen_Kcb[j] = self.Kcb_mid - self.Kcb_initial - (self.Kcb_mid - self.Kcb_end) * ((adj_j - self.lateseas) / (self.endseas - self.lateseas))
+                elif adj_j < self.IP + self.DP:
+                    self.Nitrogen_Kcb[j] = (self.MKcb - self.IKcb) * ((adj_j - self.IP) / (self.IP + self.DP - self.IP))
+                    # self.Nitrogen_Kcb[j] = (self.Kcb_mid - self.Kcb_initial) * ((adj_j - self.dev) / (self.mid - self.dev))
+                elif adj_j < self.LP:
+                    self.Nitrogen_Kcb[j] = self.MKcb - self.IKcb
+                elif adj_j < self.EP:
+                    self.Nitrogen_Kcb[j] = self.MKcb - self.IKcb - (self.MKcb - self.Kcb_end) * ((adj_j - self.EP) / (self.EP - self.LP))
                 else:
                    self.Nitrogen_Kcb[j] = 0
                 self.Nitrogen_frac_sum = self.Nitrogen_frac_sum + self.Nitrogen_Kcb[j]

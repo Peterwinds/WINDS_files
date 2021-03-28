@@ -51,6 +51,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
             field_test = Field_Array.loc[kk]
             if field_test['fid'] == P.FieldIDP[i]:
                 field_index = kk
+                print("Made it here")
         for locate in range(1, int(P.NumLocations[i]) + 1): #Loops through the locations in a planting
             print('before soil group letter', i, locate, Num_plantings) #P.PlantingIDP[i]) #, (Spatial_Array['PlantingID']==P.PlantingIDP[i]) & (Spatial_Array['Location']==locate))
             Soil_group_letter = wmf.Find_soil_group(Spatial_Array.loc[(Spatial_Array['PlantingID']==P.PlantingIDP[i]) & (Spatial_Array['Location']==locate)])
