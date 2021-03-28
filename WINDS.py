@@ -19,7 +19,7 @@ db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevz
 
 import WINDSfunctionsandclasses  as wmf
 
-Planting_Array=pd.read_sql('SELECT * from plantings',con=db)  #Reads all data from mysql db
+Planting_Array=pd.read_sql('SELECT * from plantings2',con=db)  #Reads all data from mysql db
 Soil_Array=pd.read_sql('SELECT * from field_soil_layers',con=db)
 Spatial_Array=pd.read_sql('SELECT * from spatial_data',con=db)
 WeatherArray=pd.read_sql('SELECT * from weather',con=db)
@@ -39,13 +39,17 @@ currentDate = now.strftime("%Y-%m-%d")
 #excel_output_path = pathprefix + 'output_test3.xlsx' 
 
 
+
 P = wmf.plantings(Planting_Array) #This sets up a planting object called P with all of the plantings and their associated information
 Num_plantings = len(P.DateP) #This is the total number of plantings in the database based on the length of the planting fields.
 for i in range(0, Num_plantings): #this loop cycles through all of the plantings
-    if (P.RunPlanting[i] =='TRUE'): #checks to see whether a planting is active and should be analyzed
+    print(P.RunPlanting[i])    
+    if (P.RunPlanting[i] == 1): #checks to see whether a planting is active and should be analyzed
         Run_time = int(P.Max_Days[i])
+        print(Run_time)
         P.Set_dates_and_data_sources(i)       
         for kk in range(0, len(Field_Array)):
+            print('made it here')
             field_test = Field_Array.loc[kk]
             if field_test['fid'] == P.FieldIDP[i]:
                 field_index = kk
@@ -126,9 +130,9 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     M.Percent_depletion[j][k] = (M.FC[k] - M.WC[j-1][k]) /(M.FC[k] - M.PWP[k]) * 100
                     M.Depletion_total[j - 1] = M.Depletion_total[j - 1] + (M.FC[k] - M.WC[j - 1][k]) * M.dz[k] *  M.Fw_y[k]
                 M.Percent_depletion_total[j-1] = M.Depletion_total[j-1] / M.Total_TAW_Fw[j][BL] * 100      
-                if M.Neglect_upper_layer_in_depletion_calc == True:
+                if M.Neglect_upper_layer_in_depletion_calc == 1:
                     M.Percent_depletion_total[j - 1] = (M.Depletion_total[j - 1] - (M.FC[M.Num_layers + 1] - M.WC[j - 1][M.Num_layers + 1]) * M.dz[M.Num_layers + 1] * M.Fw_y[M.Num_layers + 1]) / (M.Total_TAW_Fw[j][BL] - M.TAW[M.Num_layers + 1] * M.Fw_y[M.Num_layers + 1]) * 100
-                if M.adjust_P == True:
+                if M.adjust_P == 1:
                     if M.Ksat[M.Num_layers + 1] * 100 / 24 > 50:
                         p_adj = M.pTable22 + 0.1
                     elif (M.Ksat[M.Num_layers + 1] * 100 / 24) > 25:
@@ -159,7 +163,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 if M.Ks[j] > 1:
                     M.Ks[j] = 1
 
-                if M.Salinity_simulation == True:
+                if M.Salinity_simulation == 1:
                     M.Ks_salt[j] = 1 - M.b_sal / (100) * (M.ECe_ave_effective[j - 1] - M.ECe_thresh)
                     if M.Ks_salt[j] > 1: 
                         M.Ks_salt[j] = 1
@@ -216,7 +220,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 else:
                     M.Ke[j] = 0
 
-                if M.No_stress_reduction == True:
+                if M.No_stress_reduction == 1:
                     M.Ks[j] = 1#
                     M.Ks_salt[j] = 1#
                 
@@ -226,7 +230,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 M.E[j] = M.Ke[j] * M.ET_0[j]
                 
                    
-                if M.No_ET == True:
+                if M.No_ET == 1:
                     M.ET_trans[j] = 0
                     M.E[j] = 0
                 
@@ -236,9 +240,9 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 M.Depletion_total[j] = M.Depletion_total[j - 1] + (M.ET_trans[j] + M.E[j]) / 1000
                 M.Percent_depletion_total[j] = M.Depletion_total[j] / M.Total_TAW_Fw[j][BL] * 100
                 M.AW[j] = M.TAWsum[j] - M.Depletion_total[j] - M.RAWsum[j]  
-                if M.Rainfall_simulation == True:
+                if M.Rainfall_simulation == 1:
                     if M.rainfall[j] > 0:
-                        if M.Rain_infiltration_calculation == True:
+                        if M.Rain_infiltration_calculation == 1:
                             M.Rain_Infilt[j] = 1000 * M.wetting_front(j)
                         else:
                             M.Rain_Infilt[j] = M.rainfall[j] * M.Rain_partition
@@ -246,7 +250,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     else:
                         M.Rain_Infilt[j] = 0
                 
-                if M.No_infiltration == True:
+                if M.No_infiltration == 1:
                     M.Irrigation[j] = 0
                     M.Rain_Infilt[j] = 0
                 else:
@@ -258,7 +262,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                         BL, M.Num_layers + 2):
                     sum_ET = sum_ET + M.ETfrac[k]
         
-                if M.No_ET_frac_Adjustment == True:
+                if M.No_ET_frac_Adjustment == 1:
                     for k in range(1, M.Num_layers + 2):
                         M.Act_frac[j][k] = M.ETfrac[k] / sum_ET
                 else:
@@ -289,7 +293,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 
                    
                 M.wet_Rain_Infilt[j] = M.Rain_Infilt[j] * M.Fw[M.Num_layers + 1]
-                if M.Water_table_simulation == True:
+                if M.Water_table_simulation == 1:
                     M.Equilibrium_Max[j] = M.Equilibrium_Max[j-1]
                 else:
                     M.Equilibrium_Max[j] = 0
@@ -308,7 +312,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     else:
                         M.WC[j][k] = M.Active_WC[k] + (M.Infilt[j][k + 1] - M.ET_trans[j] / 1000 * M.Act_frac[j][k]) / M.dz[k] / M.Fw[k]
                     
-                    if M.WC[j][k] > M.FC[k] and M.Turn_off_field_capacity_restriction == False:
+                    if M.WC[j][k] > M.FC[k] and M.Turn_off_field_capacity_restriction == 0:
                         M.Infilt[j][k] = (M.WC[j][k] - M.FC[k]) * M.dz[k] * M.Fw[k]
                         M.WC[j][k] = M.FC[k]
                     elif M.WC[j - 1][k - 1] >= M.ts[k - 1]:
@@ -328,7 +332,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                         
                         M.hc[j][k] = -((te[k] ** (-1 / M.mv[k]) - 1) ** (1 / M.nv[k])) / M.av[k] / 100
                         M.hc[j][k - 1] = -((te[k - 1] ** (-1 / M.mv[k - 1]) - 1) ** (1 / M.nv[k - 1])) / M.av[k - 1] / 100
-                        if k == 1 and Seal_bottom == True:
+                        if k == 1 and Seal_bottom == 1:
                             M.Infilt[j][k] = 0
                         else:
                             M.Infilt[j][k] = (M.hc[j][k] - M.hc[j][k - 1] + (M.Zave[k] - M.Zave[k - 1])) / (M.Zave[k] - M.Zave[k - 1]) * Keff[k] * M.Fw[k]
@@ -346,11 +350,11 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     Depthcalc = Depthcalc + M.dz[k]
                 M.VWCave[j] = M.TDW[j] / Depthcalc
                         
-                if M.Neglect_upper_layer_in_depletion_calc == True:
+                if M.Neglect_upper_layer_in_depletion_calc == 1:
                     M.Percent_depletion_total[j] = (M.Depletion_total[j] - (M.FC[M.Num_layers + 1] - M.WC[j][M.Num_layers + 1]) * M.dz[M.Num_layers + 1] * M.FW_layers[j - 1][M.Num_layers + 1]) / (M.Total_TAW_Fw[j][BL] - M.TAW[M.Num_layers + 1] * M.Fw[M.Num_layers + 1]) * 100
 
-                if M.Salinity_simulation == True:
-                    Check = True
+                if M.Salinity_simulation == 1:
+                    Check = 1
                     for k in range(M.Num_layers + 1, 0, -1):
                         M.Active_EC[k] = M.EC[j - 1][k]
 
@@ -369,22 +373,22 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                             if (M.Irrigation[j] + M.wet_Rain_Infilt[j]) / 1000 / M.Fw[k] > (M.FC[k] - M.Active_WC[k]) * M.dz[k]:
                                 M.EC[j][k] = (M.Irrigation[j] / 1000 / M.Fw[k] * M.Irr_Sal[j] + mwaste + M.Active_EC[k] * M.dz[k] * M.Active_WC[k]) / ((M.Irrigation[j] + M.wet_Rain_Infilt[j]) / 1000 / M.Fw[k] + M.dz[k] * M.Active_WC[k] - (M.E_wet[j] + M.ET_trans[j] * M.Act_frac[j][k]) / M.Fw[k] / 1000)
                                 M.Active_EC[k] = M.EC[j][k]
-                                Check = True
+                                Check = 1
                             elif M.Infilt[j][k] < 0:
                                 M.EC[j][k] = (-M.Infilt[j][k] / M.Fw[k] * M.Active_EC[M.Num_layers] + mwaste + M.Active_EC[k] * M.dz[k] * M.Active_WC[k]) / (M.dz[k] * M.WC[j][k])
-                                Check = False
+                                Check = 0
                             else:
                                 M.EC[j][k] = (M.Irrigation[j] / 1000 / M.Fw[k] * M.Irr_Sal[j] + mwaste - M.Infilt[j][k] * M.Active_EC[k] / M.Fw[k] + M.Active_EC[k] * M.dz[k] * M.Active_WC[k]) / (M.dz[k] * M.WC[j][k])
-                                Check = False
+                                Check = 0
                             
                             M.ECe[j][k] = M.EC[j][k] * M.WC[j][k] / M.ts[k]
                         else:
-                            if Check == True and M.Infilt[j][k] > 0:
+                            if Check == 1 and M.Infilt[j][k] > 0:
                                 M.EC[j][k] = (M.Infilt[j - 1][k] / M.Fw[k] * M.Active_EC[k + 1] + mwaste + M.Active_EC[k] * M.dz[k] * M.Active_WC[k]) / (M.Infilt[j - 1][k] / M.Fw[k] + M.dz[k] * M.Active_WC[k] - M.ET_trans_wet[j] * M.Act_frac[j][k] / M.Fw[k] / 1000)
                                 M.Active_EC[k] = M.EC[j][k]
-                                Check = True
+                                Check = 1
                                 if k == 1:
-                                    M.EC_leach_eqn[j] = True
+                                    M.EC_leach_eqn[j] = 1
                             elif M.Infilt[j - 1][k] <= 0 and M.Infilt[j][k] > 0:
                                 M.EC[j][k] = (M.Infilt[j - 1][k] * M.Active_EC[k] / M.Fw[k] + mwaste - M.Infilt[j][k] * M.Active_EC[k] / M.Fw[k] + M.Active_EC[k] * M.dz[k] * M.WC[j - 1][k]) / (M.dz[k] * M.WC[j][k])
                             elif M.Infilt[j - 1][k] <= 0 and M.Infilt[j][k] <= 0:
@@ -409,7 +413,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                                 M.Total_salt[j] = M.Total_salt[j] + M.EC[j][k] * 640 * M.WC[j][k] * M.dz[k] * M.Fw[k]
                             M.EC[j][0] = M.EC[j][1]
                         
-                if M.Nitrogen_simulation == True:
+                if M.Nitrogen_simulation == 1:
                     
                     Weighted_N = np.zeros(M.Num_layers + 2)
                     
@@ -524,12 +528,12 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
             #'Calculate fertilizer addition
             
                         if k == M.Num_layers + 1:
-                            if M.Dont_fertilize_evap_layer == True:
+                            if M.Dont_fertilize_evap_layer == 1:
                                 mfer = 0
                             else:
                                 mfer = 0.5 * M.Fert[j] / 10
                         elif k == M.Num_layers:
-                            if M.Dont_fertilize_evap_layer == True:
+                            if M.Dont_fertilize_evap_layer == 1:
                                 mfer = M.Fert[j] / 10
                             else:
                                 mfer = 0.5 * M.Fert[j] / 10
@@ -542,21 +546,21 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                                 if (M.Irrigation[j] + M.wet_Rain_Infilt[j]) / 1000 / M.Fw[k] > (M.FC[k] - M.Active_WC[k]) * M.dz[k]:
                                     M.N[j][k] = (M.Irrigation[j] / 1000 / M.Fw[k] * M.Irr_Nit[j] + mMin - mDen + mfer - mupt / M.Fw[k] + M.Active_n[k] * M.dz[k]* M.Active_WC[k]) / ((M.Irrigation[j] + M.wet_Rain_Infilt[j]) / 1000 / M.Fw[k] + M.dz[k] * M.Active_WC[k] - (M.E_wet[j] + M.ET_trans_wet[j] * M.Act_frac[j][k]) / M.Fw[k] / 1000)
                                     M.Active_n[k] = M.N[j][k]
-                                    Check = True
+                                    Check = 1
                                 elif M.Infilt[j][k] < 0:
                                     M.N[j][k] = (-M.Infilt[j][k] / M.Fw[k] * M.Active_n[M.Num_layers] + mMin - mDen + mfer - mupt / M.Fw[k] + M.Active_n[k] * M.dz[k] * M.Active_WC[k]) / (M.dz[k] * M.WC[j][k])
-                                    Check = False
+                                    Check = 0
                                 else:
                                     M.N[j][k] = (M.Irrigation[j] / 1000 / M.Fw[k] * M.Irr_Nit[j] + mMin - mDen + mfer - mupt / M.Fw[k] - M.Infilt[j][k] * M.Active_n[k] / M.Fw[k] + M.Active_n[k] * M.dz[k] * M.Active_WC[k]) / (M.dz[k] * M.WC[j][k])
-                                    Check = False
+                                    Check = 0
                                 
                         else:
-                                if Check == True and M.Infilt[j][k] > 0:
+                                if Check == 1 and M.Infilt[j][k] > 0:
                                     M.N[j][k] = (M.Infilt[j][k + 1] / M.Fw[k] * M.Active_n[k + 1] + mMin - mDen + mfer - mupt / M.Fw[k] + M.Active_n[k] * M.dz[k] * M.Active_WC[k]) / (M.Infilt[j][k + 1] / M.Fw[k] + M.dz[k] * M.Active_WC[k] - M.ET_trans_wet[j] * M.Act_frac[j][k] / M.Fw[k] / 1000)
-                                    Check = True
+                                    Check = 1
                                     M.Active_n[k] = M.N[j][k]
                                     if k == 1:
-                                        M.N_leach_eqn[j] = True
+                                        M.N_leach_eqn[j] = 1
                                 elif M.Infilt[j][k + 1] <= 0 and M.Infilt[j][k] > 0:
                                     M.N[j][k] = (M.Infilt[j][k + 1] * M.Active_n[k] / M.Fw[k] + mMin - mDen + mfer - mupt / M.Fw[k] - M.Infilt[j][k] * M.Active_n[k] / M.Fw[k] + M.Active_n[k] * M.dz[k] * M.WC[j - 1][k]) / (M.dz[k] * M.WC[j][k])
                                 elif M.Infilt[j][k + 1] <= 0 and M.Infilt[j][k] <= 0:
@@ -723,6 +727,6 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
 
             
            
-            # temp_layer_output.to_sql('TempLayerOutput', db, if_exists='append', index = False)
-            # temp_output.to_sql('TempOutput',db,if_exists='append', index = False)
+            # temp_layer_output.to_sql('TempLayerOutput', db, if_exists='append', index = 0)
+            # temp_output.to_sql('TempOutput',db,if_exists='append', index = 0)
 

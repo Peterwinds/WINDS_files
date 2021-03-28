@@ -95,7 +95,7 @@ def Create_weather_array(WeatherArray, Average_weather_array, First_day, DateP, 
     length = len(ws_date)
     indexw = WeatherArray.index.values
     indexa = Average_weather_array.index.values
-    data_added = False
+    data_added = 0
     offset = 0
     for j in range(0, final_day):
         DateW = DateP + timedelta(days = j + int(First_day))
@@ -404,8 +404,8 @@ class plantings:
         self.DateP = pd.to_datetime(PlantingArray['PlantingDate'], format='%Y-%m-%d %H:%m:%s')
         self.LastSimulatedDOE = PlantingArray['LastSimulatedDOE']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.LastSimulatedDate = PlantingArray['LastSimulatedDate']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.RunPlanting = PlantingArray['RunPlanting']                     #A Boolean that specifies whether a simulation should take place
-        self.RunToCurrentDay = PlantingArray['RunToCurrentDay']
+        self.RunPlanting = PlantingArray['RunPlanting']                 #A Boolean that specifies whether a simulation should take place
+        self.RunToCurrentDay = int(PlantingArray['RunToCurrentDay'])
         self.ForecastDays = PlantingArray['ForecastDays']                   #The number of days ahead of the present day (integer) for which the model should predict growth, water use, and irrigations
         self.PlantingIDP = PlantingArray['pid']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.PlantingName = PlantingArray['Planting Name']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
@@ -550,7 +550,7 @@ class plantings:
         if self.LastSimulatedDOE[i] == 0:
             self.FirstDate = self.DateP[i]
             self.First_day = 0
-            if self.RunToCurrentDay[i] == False: #this is the case for running the entire season
+            if self.RunToCurrentDay[i] == 0: #this is the case for running the entire season
                 self.final_day = self.Max_Days[i]
             else: #Case 2: where it starts at beginning of season and runs to current day + forecast
                # self.Current_day = dt.datetime.now() + dt.timedelta(days = int(self.ForecastDays[i] - 1))
@@ -565,7 +565,7 @@ class plantings:
         else: 
             self.FirstDate = self.LastSimulatedDate[i]
             self.First_day = self.LastSimulatedDOE[i]
-            if self.RunToCurrentDay[i] == False:#this is the case where part of the season is past and runs to the end
+            if self.RunToCurrentDay[i] == 0:#this is the case where part of the season is past and runs to the end
                 self.final_day = int(self.Max_Days[i] - self.LastSimulatedDOE[i])
             else: #this is the case where part of the season is past and running to current day.
                 self.Current_day = dt.now() + timedelta(days = int(self.ForecastDays[i] - 1))
@@ -933,20 +933,20 @@ class model(plantings, fields, soil, weather):
                     
             self.Ps[1] = self.pTable22                
         
-        if self.Salinity_simulation == True:
-            if self.WasteAppTF == True:
+        if self.Salinity_simulation == 1:
+            if self.WasteAppTF == 1:
                 self.waste_app_day = (self.waste_app_date - self.DateP).days
             else:
                 self.waste_app_day = 10000
             for j in range(1, final_day):
                 adj_j = j + self.DOE[0]
                 self.Irr_Sal[j] = self.ECiw
-                self.EC_leach_eqn[j] = False
+                self.EC_leach_eqn[j] = 0
                 if adj_j - self.waste_app_day > 0 and adj_j - self.waste_app_day - 1 < 1/self.Waste_dissolution:
                     self.Waste_sal[j] = self.Waste_dissolution * self.Waste_sal_kgha
 
-        if self.Nitrogen_simulation == True:
-            if self.WasteAppTF == True:
+        if self.Nitrogen_simulation == 1:
+            if self.WasteAppTF == 1:
                 self.Fert1_day = (self.Fert1_date - self.DateP).days
                 self.Fert2_day = (self.Fert2_date - self.DateP).days
                 self.Fert3_day = (self.Fert3_date - self.DateP).days
@@ -961,7 +961,7 @@ class model(plantings, fields, soil, weather):
                 adj_j = j + self.DOE[0]
                 self.Fert[j] = 0
                 self.Irr_Nit[j] = self.Niw
-                self.N_leach_eqn[j] = False
+                self.N_leach_eqn[j] = 0
                 if self.Number_fertilizations > 0 and adj_j - self.Fert1_day > 0 and adj_j - self.Fert1_day - 1 < 1/self.nit_dissolution:
                     self.Fert1[j] = self.nit_dissolution * self.Fert1_rate
                 if self.Number_fertilizations > 1 and adj_j - self.Fert2_day > 0 and adj_j - self.Fert2_day - 1 < 1/self.nit_dissolution:
@@ -1052,7 +1052,7 @@ class model(plantings, fields, soil, weather):
         for k in range(int(self.Bottom_layer[1]), self.Num_layers + 2):
             sum_ET = sum_ET + self.ETfrac[k]
 
-        if self.No_ET_frac_Adjustment == True:
+        if self.No_ET_frac_Adjustment == 1:
             for k in range(1, self.Num_layers + 2):
                 self.Act_frac[1][k] = self.ETfrac[k] / sum_ET
         else:
@@ -1074,7 +1074,7 @@ class model(plantings, fields, soil, weather):
                 for k in range(self.Num_layers + 1, int(self.Bottom_layer[1]) - 1, -1):
                     self.Act_frac[1][k] = self.Act_frac[1][k] / Sum_act_frac
 
-        if self.Salinity_simulation == True:
+        if self.Salinity_simulation == 1:
             for k in range(1, self.Num_layers + 2):
                 kk = Output_Layer_Array[Output_Layer_Array['Layer']==k].index.values
                 if Last_DOE == 0:                                                          #The day of experiment, integer j
@@ -1096,7 +1096,7 @@ class model(plantings, fields, soil, weather):
             for k in range(1, self.Num_layers + 2):
                 self.Active_EC[k] = self.EC[0][k]
                                     #The electrical conductivity of the actual water in the layer, dS/m, decimal, 8 digits
-        if self.Nitrogen_simulation == True:
+        if self.Nitrogen_simulation == 1:
             for k in range(1,  self.Num_layers + 2):
                 kk = Output_Layer_Array[Output_Layer_Array['Layer']==k].index.values
                 if Last_DOE == 0:                                                          #The day of experiment, integer j
@@ -1206,9 +1206,9 @@ class model(plantings, fields, soil, weather):
                 Lf_prev = Depth[i]
         
         if Capacity > 0 and i < self.Num_layers:
-            continuecalcs = True
+            continuecalcs = 1
         else:
-            continuecalcs = False
+            continuecalcs = 0
             Total_Infiltration = Capacity
         
         total_time = 0
@@ -1230,7 +1230,7 @@ class model(plantings, fields, soil, weather):
         j = i
         total_time = dt
         
-        while total_time < self.Rain_time[j] and continuecalcs == True and j < self.Num_layers:
+        while total_time < self.Rain_time[j] and continuecalcs == 1 and j < self.Num_layers:
             total_time = total_time + dt
             Sum_denominator = 0
             for i in range(1, j+1):
@@ -1246,16 +1246,16 @@ class model(plantings, fields, soil, weather):
                 Infiltration = Infiltration_rate * dt
     
             Total_Infiltration = Total_Infiltration + Infiltration
-            while (m[j] == 0 & continuecalcs == True):
+            while (m[j] == 0 & continuecalcs == 1):
                 j = j + 1
                 LF = LF + z[j - 1]
                 if j == self.Num_layers:
-                    continuecalcs = False
+                    continuecalcs = 0
                     Total_Infiltration = Capacity
-            if continuecalcs == True:
+            if continuecalcs == 1:
                 LF = LF + Infiltration / m[j]
                 if LF > Depth[self.Num_layers]:
-                    continuecalcs = False
+                    continuecalcs = 0
                     Total_Infiltration = Capacity
                 else:
                     i = 1
@@ -1332,7 +1332,7 @@ class model(plantings, fields, soil, weather):
 #Find the drainage rate based on either the linear function or the Kirkham resistance function
         
         time_step = 1
-        if self.Kirkham_rate == True:
+        if self.Kirkham_rate == 1:
             if self.zwt[j-1] == self.Drain_elevation:
                 Drain_flux = 0
             else:
@@ -1566,7 +1566,7 @@ def KirkhamSolution(x, S, r, h, k, re):
 #
 #     For i = 1 To Num_treatments
 #         Perform_analysis(i) = Worksheets("Spatial_data").Cells(i + 10, 13).value
-#         If Perform_analysis(i) = True Then
+#         If Perform_analysis(i) = 1 Then
 #             Irrigation_name = Worksheets("Spatial_data").Cells(1 + i, 3).Formula
 #             Irrigation_number = Right(Irrigation_name, 2)
 #         End If
@@ -1597,7 +1597,7 @@ def KirkhamSolution(x, S, r, h, k, re):
 #         Irrigation_summary_sheet = CSng(Irrigation_number)
 #         Section_number = Worksheets("Spatial_data").Cells(1 + i, 5).value
 #
-#         If Perform_analysis(Irrigation_summary_sheet) = True Then
+#         If Perform_analysis(Irrigation_summary_sheet) = 1 Then
 #             Worksheets("Irrigation_summary_" + Irrigation_number).Range("A5:AC1000").ClearContents
 #             Worksheet_name = "C_" + CStr(Plot_number)
 #             days = Worksheets(Worksheet_name).Range(Cell_range_days)
@@ -1626,7 +1626,7 @@ def KirkhamSolution(x, S, r, h, k, re):
 #     Next i
 #
 #     For i = 1 To Num_treatments
-#         If Perform_analysis(i) = True Then
+#         If Perform_analysis(i) = 1 Then
 #             If i < 10 Then
 #                 Irrigation_number = "0" + CStr(i)
 #             Else
@@ -1648,15 +1648,15 @@ def KirkhamSolution(x, S, r, h, k, re):
 #                     Sort_depletions(k) = 100
 #
 #                     For kk = 1 To Num_Cells
-#                         Already_taken = False
+#                         Already_taken = 0
 #                         If Depletions(kk) < Sort_depletions(k) Then
 #                             For kkk = 2 To k
 #                                 If Low_sequence(kkk - 1) = kk Then
-#                                     Already_taken = True
+#                                     Already_taken = 1
 #                                 End If
 #                             Next kkk
 #
-#                             If Already_taken = False Then
+#                             If Already_taken = 0 Then
 #                                 Sort_depletions(k) = Depletions(kk)
 #                                 Low_sequence(k) = kk
 #                             End If
@@ -1801,20 +1801,20 @@ def KirkhamSolution(x, S, r, h, k, re):
 #     Next i
 #
 #     self.Plot_analysis As Boolean
-#     Plot_analysis = False
+#     Plot_analysis = 0
 #     For i = 1 To Num_plots
 #         Perform_plot_analysis(i) = Worksheets("Spatial_data").Cells(i + 26, 13).value
-#         If Perform_plot_analysis(i) = True Then
-#             Plot_analysis = True
+#         If Perform_plot_analysis(i) = 1 Then
+#             Plot_analysis = 1
 #         End If
 #     Next i
 #
-#     If Plot_analysis = True Then
+#     If Plot_analysis = 1 Then
 #         Worksheets("Plot irrigation summaries").Range("A5:A1500").ClearContents
 #         Worksheets("Plot irrigation summaries").Range("C5:E1500").ClearContents
 #     End If
 #     For i = 1 To Num_plots
-#         If Perform_plot_analysis(i) = True Then
+#         If Perform_plot_analysis(i) = 1 Then
 #             Plot_number = Worksheets("Spatial_data").Cells(26 + i, 12)
 #             If Planting_date_in_spatial_data Then
 #                 Planting_day = Worksheets("Spatial_data").Cells(26 + i, 16).value
