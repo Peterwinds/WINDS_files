@@ -1017,9 +1017,7 @@ class model(plantings, fields, soil, weather):
         self.Cum_Drain = np.zeros((final_day, self.Num_layers + 2))
         self.Cum_Irr = np.zeros((final_day, self.Num_layers + 2))
         self.Cum_Total = np.zeros((final_day, self.Num_layers + 2))
-       
-        if len(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values) > 0:
-            kk = int(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values)
+        kk = int(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values)
         
         for k in range(1, self.Num_layers + 2):
             self.DAP[0][k] = Last_DOE

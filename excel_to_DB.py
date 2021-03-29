@@ -8,12 +8,12 @@ db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevz
 connection = db.raw_connection()
 cursor = connection.cursor()
 
-myfile1="Plantings.csv"
+myfile1="irrigation_activity.csv"
 
 df_file=pd.read_csv(myfile1,sep=",")
 
 
-df_file.to_sql(name='plantings2',con=db,if_exists='append',index=False)  #test table is the name of the table you want, it will auto append if the table exists
+df_file.to_sql(name='irrigation_activity',con=db,if_exists='append',index=False)  #test table is the name of the table you want, it will auto append if the table exists
 
 #if_exists{‘fail’, ‘replace’, ‘append’}, default ‘fail’
 #How to behave if the table already exists.
