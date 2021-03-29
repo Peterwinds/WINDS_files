@@ -49,7 +49,8 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
         P.Set_dates_and_data_sources(i)       
         for kk in range(0, len(Field_Array)):
             field_test = Field_Array.loc[kk]
-            if field_test['fid'] == P.FieldIDP[i]:
+            print('test and array',field_test['fid'], P.FieldIDP[i])
+            if int(field_test['fid']) == int(P.FieldIDP[i]):
                 field_index = kk
                 print("Made it here")
         for locate in range(1, int(P.NumLocations[i]) + 1): #Loops through the locations in a planting
@@ -84,10 +85,8 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                   Weather_Array_in) #reads in the weather values for the season for the station associated with the planting from Weather table
 
             M.ET_daily(ET_dailyArray.loc[ET_dailyArray['cid']==P.CropID[i]])
-            if len(Output_Array_in) > 0:
-                M.SetOutputArrays(P.FirstDate, P.First_day, P.final_day, Output_Array_in)
-                print(len(Output_Array_in))
-                M.SetOutputLayersArray(P.First_day, P.final_day, Output_Layer_Array_in)
+            M.SetOutputArrays(P.FirstDate, P.First_day, P.final_day, Output_Array_in)
+            M.SetOutputLayersArray(P.First_day, P.final_day, Output_Layer_Array_in)
             M.ParameterizeIrrigation(P.First_day, P.final_day, Irrigation_Array.loc[(Irrigation_Array['pid']==P.PlantingIDP[i]) & (Irrigation_Array['IrrigationGroup']==Irrigation_group_letter)])
             M.Create_output_layer_arrays(int((P.final_day + 1) * (M.Num_layers + 1)), P.final_day, M.Num_layers)
 

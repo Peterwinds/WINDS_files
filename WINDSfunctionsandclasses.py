@@ -530,6 +530,7 @@ class plantings:
         self.Fert3_rate = PlantingArray['Rate_of_application_3'] #Rate of fertilizer application 3 (kg/ha) real, 8 digits
         self.Fert_depth = PlantingArray['Depth_of_fertilizer_application']
         self.Number_fertilizations = PlantingArray['Number_of_fertilization_events'] #Number of times fertilizer is applied, Integer
+        self.Constant_Km = 1
         self.Constant_Km_1 = PlantingArray['Read_in_daily_Km_values']
         self.Constant_Km_2 = PlantingArray['Adjust_Km_in_program_for_opt']
         self.Constant_Km_3 = PlantingArray['Use_constant_Km_values']
@@ -575,7 +576,7 @@ class plantings:
 
 class fields:
     def __init__(self, Field_Array):
-        self.FieldIDF = Field_Array['fid'][0]                                #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.FieldIDF = Field_Array['fid']                               #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.FieldNameF = Field_Array['Field Name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
         self.AccountIDF = Field_Array['aid']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.Num_layers = Field_Array['Num_layers']                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
@@ -603,6 +604,8 @@ class fields:
         self.Keep_equilibrium_layers_out_of_root_zone = Field_Array['Keep_equilibrium_layers_out_of_root_zone'] #Boolean that is true if equilibrium layers in drainage simulation are not allowed to enter the root zone
         self.Fraction_of_saturation_for_equilibrium = Field_Array['Fraction_of_saturation_for_equilibrium'] #Fraction of saturation for equilibrium, fraction, 5 digits
         self.Continue_drainage_rate = Field_Array['Continue_drainage_rate']
+        self.Rain_partition = 1
+        
 class spatial:
     def __init__(self, SpatialArray):
         self.PlantingIDS = np.array(SpatialArray['PlantingID'])                      #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
@@ -1017,7 +1020,9 @@ class model(plantings, fields, soil, weather):
         self.Cum_Drain = np.zeros((final_day, self.Num_layers + 2))
         self.Cum_Irr = np.zeros((final_day, self.Num_layers + 2))
         self.Cum_Total = np.zeros((final_day, self.Num_layers + 2))
-        kk = int(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values)
+        
+        if len(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values) > 0:
+            kk = int(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values)
         
         for k in range(1, self.Num_layers + 2):
             self.DAP[0][k] = Last_DOE
@@ -1030,11 +1035,12 @@ class model(plantings, fields, soil, weather):
                 self.Depletion[0][k] = Output_Layer_Array['Depletion'].loc[kk]
                 self.Percent_depletion[0][k] = Output_Layer_Array['PercentDepletion'].loc[kk]
         for j in range(1, final_day - 1):
+            print('root and depth',self.Depth[2], self.Root[2])
             self.Total_TAW_Fw[j][self.Num_layers + 2] = 0
             for k in range(self.Num_layers + 1, 0, -1):
                 self.Total_TAW_Fw[j][k] = self.Total_TAW_Fw[j][k+1] + self.TAW[k]*self.FW_layers[j][k]            
             k = self.Num_layers + 1
-            while self.Depth[k] < self.Root[j]:
+            while self.Depth[k] < self.Root[j]/1000:
                 k = k - 1
             self.Bottom_layer[j] = k
             if self.Bottom_layer[j] < 1:
