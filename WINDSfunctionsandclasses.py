@@ -623,6 +623,7 @@ class soil:
         self.LayerNumber = np.array(SoilArray['LayerNumber'])
         self.Depth = np.array(SoilArray['Depth'])                         #The depth of the bottom of the layer, cm, decimal, 8 digits
         self.InitWC = SoilArray['InitWC']
+        self.switch_wetting_phase = 400
         self.FC = np.array(SoilArray['FC'])                                #The field capactiy of the layer, percentage, decimal, 8 digits
         self.PWP = np.array(SoilArray['PWP'])                              #The permanent wilting point of the layer, percentage, decimal, 8 digits
         self.ts = np.array(SoilArray['Sat'])                               #The saturated water content of the layer, percentage, decimal, 8 digits
@@ -690,10 +691,19 @@ class soil:
                else:
                     self.zu[i] = self.Depth[1] - self.Depth[i+1]
                     self.zl[i] = self.Depth[1] - self.Depth[i]
-               self.Zave[i] = (self.zu[i] + self.zl[i]) / 2
+               self.Zave[i] = (self.zu[i] + self.zl[i]) / 2 
        
         self.max_array_length = int(self.Max_Days)
         self.FW_layers = np.zeros((self.max_array_length + 1, self.Num_layers + 2))
+        print('FW stuff', self.Fw1)
+
+        for j in range(1, self.max_array_length + 1):
+            for k in range(1, int(self.Num_layers) + 2):
+                if j < self.switch_wetting_phase:
+                    self.FW_layers[j][k] = self.Fw1[k]
+                else:
+                    self.FW_layers[j][k] = self.Fw2[k]
+                print('FW stuff', self.Fw1[k])
 
         
 class model(plantings, fields, soil, weather):
@@ -1026,7 +1036,8 @@ class model(plantings, fields, soil, weather):
         
         for k in range(1, self.Num_layers + 2):
             self.DAP[0][k] = Last_DOE
-            if Last_DOE == 0:                                                          #The day of experiment, integer j
+            if Last_DOE == 0:   
+                print('in here', self.InitWC[k])                                                       #The day of experiment, integer j
                 self.WC[0][k] = self.InitWC[k]
                 self.Depletion[0][k] = (self.FC[k] - self.WC[0][k]) * self.dz[k] * self.Fw1[k]
                 self.Percent_depletion[0][k] = (self.FC[k] - self.WC[0][k]) / (self.FC[k] - self.PWP[k])
@@ -1035,10 +1046,10 @@ class model(plantings, fields, soil, weather):
                 self.Depletion[0][k] = Output_Layer_Array['Depletion'].loc[kk]
                 self.Percent_depletion[0][k] = Output_Layer_Array['PercentDepletion'].loc[kk]
         for j in range(1, final_day - 1):
-            print('root and depth',self.Depth[2], self.Root[2])
             self.Total_TAW_Fw[j][self.Num_layers + 2] = 0
             for k in range(self.Num_layers + 1, 0, -1):
                 self.Total_TAW_Fw[j][k] = self.Total_TAW_Fw[j][k+1] + self.TAW[k]*self.FW_layers[j][k]            
+                print('TAW stuff', self.Total_TAW_Fw[j], self.TAW[k], self.FW_layers[j][k])
             k = self.Num_layers + 1
             while self.Depth[k] < self.Root[j]/1000:
                 k = k - 1

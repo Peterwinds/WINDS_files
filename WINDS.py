@@ -94,7 +94,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
             M.PlantingNameO[0] = P.PlantingName[i]
             M.LocationO[0] = locate
             Name = "Guar_fraction"
-            FW_layers = wmf.create_wetted_array(WettingArray, int(P.final_day), M.Num_layers, Name, 500, 1000, 1000, 1000, 1000) 
+            # FW_layers = wmf.create_wetted_array(WettingArray, int(P.final_day), M.Num_layers, Name, 500, 1000, 1000, 1000, 1000) 
             
             for j in range(1, int(P.final_day) - 1):
                 BL: int = int(M.Bottom_layer[j])
@@ -146,6 +146,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 if M.Ks_water_total[j] < 0: 
                     M.Ks_water_total[j] = 0
                 M.Ks[j] = M.Ks_water_total[j]
+                if j < 5: print('Total TAW', M.Total_TAW_Fw[j])
                         
                 if M.Ks[j] > 1:
                     M.Ks[j] = 1
@@ -213,6 +214,8 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 
                 M.Ks_salt[j] = 1
                 M.ET_trans[j] = M.Kcb[j] * M.Ks[j] * M.Ks_salt[j] * M.ET_0[j]
+                if j < 5: print('water content', M.WC[j-1], M.Irrigation[j], M.Kcb[j], M.Ks[j], M.Act_frac[j][1],M.Ks_salt[j], M.ET_trans[j],M.ET_0[j])
+
                 M.ET_pot[j] = M.Kcb[j] * M.ET_0[j]
                 M.E[j] = M.Ke[j] * M.ET_0[j]
                 
@@ -244,9 +247,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     M.Irrigation[j] = M.Irrigation_depth[j]
 #         Allocate transpiration between layers based on depth of roots and actual depletion
                 sum_ET = 0
-                for k in range(
-
-                        BL, M.Num_layers + 2):
+                for k in range(BL, M.Num_layers + 2):
                     sum_ET = sum_ET + M.ETfrac[k]
         
                 if M.No_ET_frac_Adjustment == 1:
@@ -291,7 +292,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                 Depthcalc = 0
                 
                 for k in range(M.Num_layers + 1, Equil_Max, -1): # Equil_Max is the upper layer number of the water table. 
-                   
+                    if j < 5: print('water content', M.WC[j-1], M.Irrigation[j], M.E_wet[j], M.Act_frac[j][1],M.ET_trans[j])
                     M.Active_WC[k] = M.WC[j - 1][k] # M.Active is the water content ###Probably not needed for irrigation. If not, replace it with M.WC
                     
                     if k == M.Num_layers + 1:
@@ -299,7 +300,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     else:
                         M.WC[j][k] = M.Active_WC[k] + (M.Infilt[j][k + 1] - M.ET_trans[j] / 1000 * M.Act_frac[j][k]) / M.dz[k] / M.Fw[k]
                     
-                    if M.WC[j][k] > M.FC[k] and M.Turn_off_field_capacity_restriction == 0:
+                    if M.WC[j][k] > M.FC[k] and M.Turn_off_field_capacity_restriction == False:
                         M.Infilt[j][k] = (M.WC[j][k] - M.FC[k]) * M.dz[k] * M.Fw[k]
                         M.WC[j][k] = M.FC[k]
                     elif M.WC[j - 1][k - 1] >= M.ts[k - 1]:
@@ -319,7 +320,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                         
                         M.hc[j][k] = -((te[k] ** (-1 / M.mv[k]) - 1) ** (1 / M.nv[k])) / M.av[k] / 100
                         M.hc[j][k - 1] = -((te[k - 1] ** (-1 / M.mv[k - 1]) - 1) ** (1 / M.nv[k - 1])) / M.av[k - 1] / 100
-                        if k == 1 and Seal_bottom == 1:
+                        if k == 1 and Seal_bottom == True:
                             M.Infilt[j][k] = 0
                         else:
                             M.Infilt[j][k] = (M.hc[j][k] - M.hc[j][k - 1] + (M.Zave[k] - M.Zave[k - 1])) / (M.Zave[k] - M.Zave[k - 1]) * Keff[k] * M.Fw[k]
@@ -337,7 +338,7 @@ for i in range(0, Num_plantings): #this loop cycles through all of the plantings
                     Depthcalc = Depthcalc + M.dz[k]
                 M.VWCave[j] = M.TDW[j] / Depthcalc
                         
-                if M.Neglect_upper_layer_in_depletion_calc == 1:
+                if M.Neglect_upper_layer_in_depletion_calc == True:
                     M.Percent_depletion_total[j] = (M.Depletion_total[j] - (M.FC[M.Num_layers + 1] - M.WC[j][M.Num_layers + 1]) * M.dz[M.Num_layers + 1] * M.FW_layers[j - 1][M.Num_layers + 1]) / (M.Total_TAW_Fw[j][BL] - M.TAW[M.Num_layers + 1] * M.Fw[M.Num_layers + 1]) * 100
 
                 if M.Salinity_simulation == 1:
