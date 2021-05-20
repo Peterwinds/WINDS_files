@@ -9,345 +9,11 @@ import numpy as np
 from datetime import datetime as dt
 from datetime import timedelta
 
-def import_wsdata_online(location, year):
-    AZ_location_list = ['Tucson', 
-                    'Yuma Valley',
-                    'Yuma Mesa',
-                    'Safford',
-                    'Coolidge',
-                    'Maricopa',
-                    'Aguila',
-                    'Parker',
-                    'Bonita',
-                    'Waddell',
-                    'Phoenix Greenway',
-                    'Marana',
-                    'Yuma North Gila',
-                    'Phoenix Encanto',
-                    'Paloma',
-                    'Mohave',
-                    'Mohave #2',
-                    'Queen Creek',
-                    'Harquahala',
-                    'Roll',
-                    'Buckeye',
-                    'Desert Ridge',
-                    'Mesa',
-                    'Flagstaff',
-                    'Prescott',
-                    'Payson',
-                    'Bowie',
-                    'Kansas Settlement']
-    AZ_location_num = []
-    for i in range(len(AZ_location_list)):
-        AZ_location_num.append(str(i+1).zfill(2))
-    if location in AZ_location_list:
-        Loc_num = AZ_location_list.index(location)
-    else:
-        print('Weather at '+location + ' not available.')
-    url = 'https://cals.arizona.edu/azmet/data/'+AZ_location_num[Loc_num] + \
-        str(year)[-2:] + 'rd.txt'
-    names = ['Year','DOY','Station Number','tmax','tmin','Air Temp - Mean','RH - Max','rh','RH - Mean','VPD - Mean',
-              'SR-Total','rainfall','4" Soil Temp Max','4" Soil Temp Min','4" Soil Temp Mean','20" Soil Temp Max','20" Soil Temp Min','20" Soil Temp Mean',
-              'wind_speed','Wind Vector Magnitude','Wind Vector Direction','Wind Direction Standard Deviation',
-              'Max Wind Speed', 'Heat units','ET0', 'et', 'Actual Vapor Pressure','Dew point']
-    wsdata = pd.read_csv(url,sep = ',', header = None, names = names)
-    wsdata['1/24'] = 1
-        
-    for col in wsdata.columns:
-        if (wsdata[col] == 999).any():
-            wsdata[col].replace(999, np.nan, inplace = True)
-            wsdata[col].interpolate(inplace = True)
-    wsdata['Date'] = dt(2018,1,1)
-    wsdata = wsdata[['Date','rh', 'wind_speed', 'et', 'rainfall', 'tmax', 'tmin', '1/24']]
-    for j in range(1, len(wsdata) + 1):
-        wsdata['Date'].loc[j - 1] = dt(2018, 1, 1) + timedelta(days = j - 1)
-    return wsdata
-
-def Create_weather_array(WeatherArray, Average_weather_array, First_day, DateP, final_day):
-    #WeatherArray = WeatherArray.reset_index()
-    #del  WeatherArray['index']
-
-    Average_weather_array = Average_weather_array.reset_index()
-    del Average_weather_array['index']
-    
-    
-    ws_date = WeatherArray['Date']                   #the date of the record, mm/dd/yyyy
-    WS = WeatherArray['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
-    ET_0 = WeatherArray['et']                        #Reference ET, mm/day, decimal, 8 digits
-    Tmax = WeatherArray['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
-    Tmin = WeatherArray['tmin']                      #Minimum temperature, Celsius, decimal, 8 digits
-    rainfall = WeatherArray['rainfall']              #Rainfall, mm/day, decimal, 8 digits
-    Rain_time = WeatherArray['1/24']                 #Rain time (time of storm), hr, decimal, 5 digits
-    RH_min = WeatherArray['rh']
-
-    adoy=Average_weather_array['DOY']
-    aname = Average_weather_array['StationName']
-    aid = Average_weather_array['sid']
-    aWS = Average_weather_array['wind_speed']                  #wind speed, m/sec, decimal, 8 digits
-    aET_0 = Average_weather_array['et']                        #Reference ET, mm/day, decimal, 8 digits
-    aTmax = Average_weather_array['tmax']                      #Maximum temperature, Celsius, decimal, 8 digits
-    aTmin = Average_weather_array['tmin']                     #Minimum temperature, Celsius, decimal, 8 digits
-    arainfall = Average_weather_array['rainfall']              #Rainfall, mm/day, decimal, 8 digits
-    aRain_time = Average_weather_array['1/24']                 #Rain time (time of storm), hr, decimal, 5 digit
-    aRH_min = Average_weather_array['rh']
-
-    length = len(ws_date)
-    indexw = WeatherArray.index.values
-    indexa = Average_weather_array.index.values
-    data_added = 0
-    offset = 0
-    for j in range(0, final_day):
-        DateW = DateP + timedelta(days = j + int(First_day))
-        if j < length + offset:
-            if DateW != ws_date[indexw[j-offset]]:
-                doy = DateW.dayofyear
-                offset = offset + 1   
-                new_record = pd.DataFrame([[DateW, aname[doy-1], aid[doy-1], aRH_min[doy-1], aWS[doy-1],
-                        aET_0[doy-1], arainfall[doy-1], aTmax[doy-1], aTmin[doy-1], aRain_time[doy-1]]],
-                        columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24'])
-                WeatherArray = pd.concat([WeatherArray,new_record])
-        else:
-            doy = DateW.dayofyear
-            new_record = pd.DataFrame([[DateW, aname[doy - 1], aid[doy - 1], aRH_min[doy - 1], aWS[doy - 1], 
-                    aET_0[doy - 1], arainfall[doy - 1], aTmax[doy - 1], aTmin[doy - 1], aRain_time[doy - 1]]],
-                    columns=['Date','StationName','StationID','rh','wind_speed','et','rainfall','tmax','tmin','1/24']) 
-            WeatherArray = pd.concat([WeatherArray,new_record])
-     
-    WeatherArray = WeatherArray.sort_values('Date')
-    WeatherArray = WeatherArray.reset_index()
-    del WeatherArray['index']
-    for j in range(0, final_day):
-        DateW = DateP + timedelta(days = j + int(First_day))
-        doy = DateW.dayofyear
-        if WeatherArray['rh'].loc[j] < 0 or WeatherArray['rh'].loc[j] > 100:
-            WeatherArray['rh'].loc[j] = aRH_min[doy - 1]
-        if WeatherArray['wind_speed'].loc[j] < 0 or WeatherArray['wind_speed'].loc[j] > 50:
-            WeatherArray['wind_speed'].loc[j] = aWS[doy - 1]
-        if WeatherArray['et'].loc[j] < 0 or WeatherArray['et'].loc[j] > 100:
-            WeatherArray['et'].loc[j] = aET_0[doy - 1]
-        if WeatherArray['rainfall'].loc[j] < 0 or WeatherArray['rainfall'].loc[j] > 100:
-            WeatherArray['rainfall'].loc[j] = arainfall[doy - 1]
-        if WeatherArray['tmax'].loc[j] < 0 or WeatherArray['tmax'].loc[j] > 140:
-            WeatherArray['tmax'].loc[j] = aTmax[doy - 1]
-        if WeatherArray['tmin'].loc[j] < 0 or WeatherArray['tmin'].loc[j] > 100:
-            WeatherArray['tmin'].loc[j] = aTmin[doy - 1]
-        if WeatherArray['1/24'].loc[j] < 0 or WeatherArray['1/24'].loc[j] > 100:
-            WeatherArray['1/24'].loc[j] = aRain_time[doy - 1]
-    return WeatherArray
-
-def Check_output_arrays_for_last_DOE_in_previous_output(Output_Array, Output_Layer_Array, final_day):
-    length = len(Output_Layer_Array)
-    if length > 0:
-        Days_after_plantingL = np.array(Output_Layer_Array['Days_after_planting'])  #The date (not the planting date) of the record, mm/dd/yyyy
-        Max_layer_day = max(Days_after_plantingL)               #outputdoe is the length of the output data (number of rows) for this planting
-        Days_after_planting = np.array(Output_Array['Days_After_Planting'])  #The date (not the planting date) of the record, mm/dd/yyyy
-        Max_day = max(Days_after_plantingL)
-        start_day = min(Max_day, Max_layer_day, final_day)
-    else:
-        start_day = 0
-    return start_day                #outputdoe is the length of the output data (number of rows) for this planting
 
 
-def Clovis_eto(data_d):
-    # data_hr['Date'] = pd.to_datetime(data_hr['Date'],format='%Y-%m-%d 00:00:00')
-    # data_hr['Date'] = data_hr['Date'].astype('str')
-    # data_hr = pd.read_csv('clovisweatherdata_2018.csv')
-    data = pd.DataFrame(
-        columns=['Date', 'tmax', 'tmin', 'tmean', 'solar_rad', 'wind_speed', 'delta', 'eo', 'rns', 'eo_tmax', 'eo_tmin',
-                 'ea_rh_max', 'ea_rh_min', 'ea', 'es', 'sigma', 'ra', 'rso', 'rnl', 'rn', 'et'])
-    data['Date'] = data_d['Date']
-    data['tmax'] = data_d['tmax']
-    # data['min_temp_c'] = (data['min_temp_f'] -32)*(5/9)
-    data['tmin'] = data_d['tmin']
-    # data['mean_temp_c'] = (data['max_temp_c'] + data['min_temp_c'])/2
-    data['tmean'] = data_d['tmean']
-    data['rh'] = data_d['rh_min']
-    data['rh_max'] = data_d['rh_max']
-    data['wind_speed'] = data_d['wind_speed']
-    data['solar_rad'] = data_d['solar_rad']
-    data['rainfall'] = data_d['rainfall']
-    data['delta'] = 2503 * np.exp(17.27 * data['tmean'] / (data['tmean'] + 237.3)) / (data['tmean'] + 237.3) ** 2
-    # data['delta'] = (4098*(0.6108*np.exp((17.27*data['tmean'])/(data['tmean']+237.3))))/(data['tmean'] + 237.3)*2
-    data['eo'] = 0.6108 * np.exp((17.27 * data['tmean']) / (data['tmean'] + 237.3))
-    alpha = 0.23
-    data['rns'] = (1 - alpha) * data['solar_rad']
-    data['eo_tmax'] = 0.6108 * np.exp((17.27 * data['tmax']) / (data['tmax'] + 237.3))
-    data['eo_tmin'] = 0.6108 * np.exp((17.27 * data['tmin']) / (data['tmin'] + 237.3))
-    data['ea_rh_max'] = data['eo_tmin'] * data['rh_max']
-    data['ea_rh_min'] = data['eo_tmax'] * data['rh']
-    data['ea'] = ((data['ea_rh_max'] + data['ea_rh_min']) / 2) / 100
-    data['es'] = (data['eo_tmax'] + data['eo_tmin']) / 2
 
-    def ra(a):
-        a = a[4:8]
-        if a == '-06-':
-            return 42.5
-        elif a == '-07-':
-            return 42
-        elif a == '-08-':
-            return 38
-        elif a == '-09-':
-            return 32
-        elif a == '-10-':
-            return 25
-        elif a == '-11-':
-            return 18
-        else:
-            return 17
 
-    # data['sigma'] = (data['tmax'].apply(ref_temp)+data['tmax'].apply(ref_temp))/2
-    clovis_elevation_m = 1300
-    data['Date'] = data['Date'].dt.strftime('%Y-%m-%d')
-    data['ra'] = data['Date'].apply(ra)
-    data['rso'] = (0.75 + (0.00002 * clovis_elevation_m)) * data['ra']
-    stefan = 0.0000000049
-    # data['rnl']=((0.34-(0.14*np.sqrt(data['ea'])))*data['sigma'])*((1.35*(data['solar_rad']/data['rso']))-0.35)
-    data['rnl'] = (stefan * (((data['tmax'] + 273.16) ** 4) + ((data['tmin'] + 273.16) ** 4)) / 2) * (
-                0.34 - 0.14 * np.sqrt(data['ea'])) * (1.35 * (data['solar_rad'] / data['rso']) - 0.35)
-    data['rn'] = data['rns'] - data['rnl']
-    P = 101.3 - 0.01055 * clovis_elevation_m
-    data['gamma'] = P * 0.000665
-    g = 0
-    data['wind_func'] = data['gamma'] * (900 / (data['tmean'] + 273)) * data['wind_speed'] * (data['es'] - data['ea'])
-    data['rad_func'] = 0.408 * data['delta'] * (data['rn'] - g)
-    data['denominator'] = data['delta'] + data['gamma'] * (1 + 0.34 * data['wind_speed'])
-    data['et'] = (data['wind_func'] + data['rad_func']) / data['denominator']
-    data['1/24'] = 1
-    data['Date'] = pd.to_datetime(data['Date'], format='%Y-%m-%d %H:%M:%S')
-    return data  ###this should be a new datatframe so I can read daily values from the weather array!!?
 
-def Find_soil_group(Spatial_Array):
-    group_letter = Spatial_Array['SoilGroup'].iloc[0]
-    return group_letter
-    
-def Find_irrigation_group(Spatial_Array):
-    group_letter = Spatial_Array['IrrigationGroup'].iloc[0]
-    return group_letter
-   
-
-def wetting_fraction(self):
-    for j in range(1, self.max_array_length + 1):
-        for k in range(1, int(self.Num_layers) + 2):
-            if j < FW_phase_DOY_1:
-                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_1,k]
-            elif j < FW_phase_DOY_2:
-                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_2,k]
-            elif j < FW_phase_DOY_3:
-                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_3, k]
-            elif j < FW_phase_DOY_4:
-                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_4, k]
-            else:
-                FW_layers[j][k] = Wetting_Array.loc[FW_phase_DOY_5, k]
-            if FW_layers[j][k] < 1:
-                dry_soil_check[j][k] = True
-
-def create_wetted_array(WA, days, Num_layers, NameF, P1, P2, P3, P4, P5):
-    FW_layers = np.zeros((int(days) + 1, int(Num_layers) + 1))
-    Inter = 'Fraction_wetted_interval'
-    F_name = 'Fraction_wetted_name'
-    for i in range(1, 10):
-        for k in range(1, Num_layers + 1):
-            if i < P1:
-                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 1) & (WA[F_name] == NameF)].values)
-            elif i < P2:
-                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 2) & (WA[F_name] == NameF)].values)
-            elif i < P3:
-                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 3) & (WA[F_name] == NameF)].values)
-            elif i < P4:
-                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 4) & (WA[F_name] == NameF)].values)
-            else:
-                a = float(WA['Fraction'][(WA['Layer'] == k) & (WA[Inter] == 5) & (WA[F_name] == NameF)].values)
-            FW_layers[i][k] = a
-    return
-
-def Create_soil_array(SoilArray, FieldArray):
-
-    Num_layers = FieldArray['Num_layers']
-    SoilArray = SoilArray.sort_values('LayerNumber')
-    SoilArray = SoilArray.reset_index()
-    del SoilArray['index']
-    new_array = SoilArray.loc[SoilArray['LayerNumber'] == 1]
-    SoilArray = pd.concat([new_array, SoilArray], axis = 0)
-    SoilArray = SoilArray.reset_index()
-    del SoilArray['index']
-    SoilArray.iloc[0, 6] = 0
-    length = len(SoilArray)
-    added_rows = 0
-    if length != Num_layers + 2:
-        for j in range(1, length):
-            if SoilArray.iloc[j, 6] != j:
-                new_Layer = SoilArray.loc[SoilArray['LayerNumber'] == j - 1]
-                SoilArray = pd.concat([SoilArray, new_Layer], axis = 0)
-                added_rows = added_rows + 1
-                SoilArray.iloc[length + added_rows, 6] = j
-                if j < length:
-                    SoilArray.iloc[length + added_rows, 7] = (SoilArray.iloc[length + added_rows - 1, 7] + SoilArray.iloc[length + added_rows + 1, 7]) / 2
-                else:
-                    SoilArray.iloc[length + added_rows, 7] = 12
-            
-        SoilArray = SoilArray.sort_values('LayerNumber')
-        SoilArray = SoilArray.reset_index()
-        del SoilArray['index']
-
-    for j in range(1, Num_layers + 2):
-        if SoilArray['FC'].loc[j] < 1 or SoilArray['FC'].loc[j] > 100:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['FC'].loc[j] = SoilArray['FC'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['FC'].loc[j] = SoilArray['FC'].loc[j - 1]
-            else: 
-                SoilArray['FC'].loc[j] = 25
-        if SoilArray['InitWC'].loc[j] < 1 or SoilArray['InitWC'].loc[j] > 100:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['InitWC'].loc[j] = SoilArray['InitWC'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['InitWC'].loc[j] = SoilArray['InitWC'].loc[j - 1]
-            else: 
-                SoilArray['InitWC'].loc[j] = SoilArray['FC'].loc[j]
-        if SoilArray['PWP'].loc[j] < 1 or SoilArray['PWP'].loc[j] > 100:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['PWP'].loc[j] = SoilArray['PWP'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['PWP'].loc[j] = SoilArray['PWP'].loc[j - 1]
-            else: 
-                SoilArray['PWP'].loc[j] = 12
-        if SoilArray['Sat'].loc[j] < 1 or SoilArray['Sat'].loc[j] > 100:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['Sat'].loc[j] = SoilArray['Sat'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['Sat'].loc[j] = SoilArray['Sat'].loc[j - 1]
-            else: 
-                SoilArray['Sat'].loc[j] = 12
-        if SoilArray['ResWC'].loc[j] < 1 or SoilArray['ResWC'].loc[j] > 100:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['ResWC'].loc[j] = SoilArray['ResWC'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['ResWC'].loc[j] = SoilArray['ResWC'].loc[j - 1]
-            else: 
-                SoilArray['ResWC'].loc[j] = 6
-        if SoilArray['Ksat'].loc[j] < 0 or SoilArray['Ksat'].loc[j] > 1000:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['Ksat'].loc[j] = SoilArray['Ksat'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['Ksat'].loc[j] = SoilArray['Ksat'].loc[j - 1]
-            else: 
-                SoilArray['Ksat'].loc[j] = 8
-        if SoilArray['Ko'].loc[j] < 0 or SoilArray['Ko'].loc[j] > 1000:
-            if j < Num_layers + 1 and j > 1:
-                SoilArray['Ko'].loc[j] = SoilArray['Ko'].loc[j - 1]
-            elif j == Num_layers + 1:
-                SoilArray['Ko'].loc[j] = SoilArray['Ko'].loc[j - 1]
-            else: 
-                SoilArray['Ko'].loc[j] = 8
-    return SoilArray
-def create_clovis_weather_array(ClovisArray, Average_weather_array, First_day, DateP, final_day):
-
-    WeatherArray=Clovis_eto(ClovisArray)
-    return WeatherArray
-    
-
-    
 def hg(a, b, C, z):
     value = 1
     hg = value
@@ -383,44 +49,61 @@ def d_cell_Eq(ts, tr, zu, zl, zwt, alpha, N):
  
 class weather:
     def __init__(self, WeatherArray):
+        self.NumDays = self.EndDOY - self.SimStartDOY 
         self.w_date = WeatherArray['Date']                   #the date of the record, mm/dd/yyyy
-        self.WS = np.array(WeatherArray['wind_speed'])                  #wind speed, m/sec, decimal, 8 digits
-        self.ET_0 = np.array(WeatherArray['et'])                        #Reference ET, mm/day, decimal, 8 digits
+        self.RH_min = np.array(WeatherArray['rh_min'])                      #Minimum relative humidity, percent, decimal, 8 digits
+        self.WS = np.array(WeatherArray['WS'])                  #wind speed, m/sec, decimal, 8 digits
+        self.ET_0 = np.array(WeatherArray['ETo (mm)'])                        #Reference ET, mm/day, decimal, 8 digits
+        self.rainfall = np.array(WeatherArray['Rain (mm)'])              #Rainfall, mm/day, decimal, 8 digits
         self.Tmax = np.array(WeatherArray['tmax'])                      #Maximum temperature, Celsius, decimal, 8 digits
         self.Tmin = np.array(WeatherArray['tmin'])                      #Minimum temperature, Celsius, decimal, 8 digits
-        self.rainfall = np.array(WeatherArray['rainfall'])              #Rainfall, mm/day, decimal, 8 digits
-        self.Rain_time = np.array(WeatherArray['1/24'])                 #Rain time (time of storm), hr, decimal, 5 digits
-        self.RH_min = np.array(WeatherArray['rh'])                      #Minimum relative humidity, percent, decimal, 8 digits
+        self.Rain_time = np.array(WeatherArray['Rain time (hr)'])                 #Rain time (time of storm), hr, decimal, 5 digits
 
-class remote_sensing:
-    def __init__(self, RemoteArray):
-        self.Update_Kcb = RemoteArray['Values'].iloc[37]
-        self.Update_one_minus_c = RemoteArray['Values'].iloc[37]
-        self.Update_Crop_height = RemoteArray['Values'].iloc[37]
-        self.Update_Root = RemoteArray['Values'].iloc[37]
+class RS_daily:
+    def __init__(self, RS_dailyArray):
+        self.NDVI_DOY = np.array(RS_dailyArray['NDVI_DOY'])           #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+        self.NDVI_daily = np.array(RS_dailyArray['NDVI'])           #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+
+class ET_daily:
+    def __init__(self, ET_dailyArray):
+        self.Daily_DOY = np.array(ET_dailyArray['DOY'])                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+        self.Daily_Kcb = np.array(ET_dailyArray['Kcb'])
+        self.Daily_one_minus_c = np.array(ET_dailyArray['one_minus_c'])
+        self.Daily_Crop_height = np.array(ET_dailyArray['Crop_height'])
+        self.Daily_Root = np.array(ET_dailyArray['Root'])
 
 class plantings:
     def __init__(self, PlantingArray):
-        self.DateP = pd.to_datetime(PlantingArray['PlantingDate'], format='%Y-%m-%d %H:%m:%s')
-        self.LastSimulatedDOE = PlantingArray['LastSimulatedDOE']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.LastSimulatedDate = PlantingArray['LastSimulatedDate']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.RunPlanting = PlantingArray['RunPlanting']                 #A Boolean that specifies whether a simulation should take place
-        self.RunToCurrentDay = PlantingArray['RunToCurrentDay']
-        self.ForecastDays = PlantingArray['ForecastDays']                   #The number of days ahead of the present day (integer) for which the model should predict growth, water use, and irrigations
-        self.PlantingIDP = PlantingArray['pid']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.PlantingName = PlantingArray['Planting Name']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.FieldIDP = PlantingArray['fid']                                #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.FieldNameP = PlantingArray['Field Name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
-        self.AccountIDP = PlantingArray['aid']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.AccountOwner = PlantingArray['AccountName']        #The number of locations (integer) that are modeled in an individual planting
-        self.NumLocations = PlantingArray['NumberOfFieldPositions']        #The number of locations (integer) that are modeled in an individual planting
-        self.crop_name = PlantingArray['CropName']                         #The name of the crop (text string), which initializes the following parameters, for example, GuayuleAZ2Spring
-        self.CropID = PlantingArray['CropID']                              #The crop ID, which initializes the following parameters, but the parameters can be subsequently changed, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9 
-        self.WeatherStationNameP = PlantingArray['WeatherStationName']       #The name of the weather station (text) to be used for this simulation, for example, Maricopa represents the AZMET Maricopa station
-        self.StationIDP = PlantingArray['WeatherStationID']          #the station ID of the record, mm/dd/yyyy
-        self.ET_fractions_name = PlantingArray['ET_fractions_name']                              #The crop ID, which initializes the following parameters, but the parameters can be subsequently changed, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9 
-        self.Wetting_sheet = PlantingArray['Wetting_fractions_name']
-        self.Kc_worksheet_name = PlantingArray['Kc_worksheet_name']
+        self.PlantingNum = PlantingArray['Planting num']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.PlantingName = PlantingArray['Planting name']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+        self.RunPlanting = PlantingArray['Run planting']                 #A Boolean that specifies whether a simulation should take place
+        self.PlantingYear = PlantingArray['Planting year']                 #A Boolean that specifies whether a simulation should take place
+        self.PlantingDOY = PlantingArray['Planting DOY']
+        self.PlantingDate = PlantingArray['Planting date']
+        self.StartDOY = PlantingArray['DOY start']                             #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.StartDate = PlantingArray['Date start']                #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+        self.EndDOY = PlantingArray['DOY end']
+        self.EndDate = PlantingArray['Date end']                   #The number of days ahead of the present day (integer) for which the model should predict growth, water use, and irrigations
+        self.FieldNum = PlantingArray['Field num']                                #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.FieldName = PlantingArray['Field name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
+        self.AccountNum = PlantingArray['Account name']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.AccountName = PlantingArray['Account name']        #The number of locations (integer) that are modeled in an individual planting
+        self.CropNum = PlantingArray['Crop num']                         #The name of the crop (text string), which initializes the following parameters, for example, GuayuleAZ2Spring
+        self.CropName = PlantingArray['Crop name']                              #The crop ID, which initializes the following parameters, but the parameters can be subsequently changed, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9 
+        self.WeatherNum = PlantingArray['Weather num']       #The name of the weather station (text) to be used for this simulation, for example, Maricopa represents the AZMET Maricopa station
+        self.WeatherName = PlantingArray['Weather name']          #the station ID of the record, mm/dd/yyyy
+        self.WeatherSheetName = PlantingArray['Weather sheet name']
+        self.ETFractionsNum = PlantingArray['ET fractions num']                              #The crop ID, which initializes the following parameters, but the parameters can be subsequently changed, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9 
+        self.WettingFractionsNum = PlantingArray['Wetting fractions num']
+        self.SimStartDOY = PlantingArray['SimStartDOY']
+        self.SimStartDate = PlantingArray['SimStartDate']
+        self.IrrNum = PlantingArray['Irr num']
+        self.IrrName = PlantingArray['Irr name']
+        self.IrrSection = PlantingArray['Irr section']
+        self.IrrFirstRow = PlantingArray['Irr first row']
+        self.NumIrrigations = PlantingArray['Num irrigations']
+        self.NumNeutron = PlantingArray['Num neutron']
+        self.FirstNeutronRow = PlantingArray['First neutron row']
         self.IP = PlantingArray['Initial_days']                                   #The number of days after planting (integer) that the development phase (IncreasingET) begins
         self.DP = PlantingArray['Development_days']                     #The number of days after planting (integer) that the Midseason (maxET) phase begins
         self.MP = PlantingArray['Midseason_days']                 #The number of days after planting (integer) that the Late Season decline phase begins
@@ -429,7 +112,7 @@ class plantings:
         self.DP_2 = PlantingArray['Development_days_year_2']               #The number of days after planting (integer) that the End Season (low ET) phase begins. Some crops so not have this phase
         self.MP_2 = PlantingArray['Midseason_days_year_2']               #The number of days after planting (integer) that the End Season (low ET) phase begins. Some crops so not have this phase
         self.LP_2 = PlantingArray['Lateseason_days_year_2']               #The number of days after planting (integer) that the End Season (low ET) phase begins. Some crops so not have this phase
-        self.Max_Days = PlantingArray['Ending_DOY']                         #The number of days after planting (integer) that the harvest takes place.
+        self.CropEndDOY = PlantingArray['Crop_end_DOY']                         #The number of days after planting (integer) that the harvest takes place.
         self.IKcb = PlantingArray['Initial_Kcb']                     #The crop coefficient during the initial stage (decimal, 5 digits), based on dual crop coefficient and FAO56
         self.MKcb = PlantingArray['Midseason_Kcb']                             #The crop coefficient during the midseason stage (decimal, 5 digits), based on dual crop coefficient and FAO56. The model increases the crop coefficient during the development stage
         self.EKcb = PlantingArray['Endseason_ Kcb']                             #The crop coefficient during the midseason stage (decimal, 5 digits), based on dual crop coefficient and FAO56. The model increases the crop coefficient during the development stage
@@ -452,7 +135,6 @@ class plantings:
         self.endH = PlantingArray['Endseason_plant_height']                   #The final crop height (decimal, 5 digits, meters). The model grows the crop during the development phase
         self.calculate_one_minus_c = PlantingArray['calculate_one_minus_c']                   #The final crop height (decimal, 5 digits, meters). The model grows the crop during the development phase
         self.Select_Kcb = PlantingArray['Kc_calculation_procedure']                          #The management allowable depletion (MAD) value from table 22 in FAO56. It is then adjusted for evaporation rate. fraction, 5 digits
-        self.Irrigation_partition = np.zeros(5)
         self.Irrigation_partition_1 = PlantingArray['Irrigation_partition_1']
         self.Irrigation_partition_2 = PlantingArray['Irrigation_partition_2']
         self.Irrigation_partition_3 = PlantingArray['Irrigation_partition_3']
@@ -461,12 +143,9 @@ class plantings:
         self.Salinity_simulation = PlantingArray['Simulate_salinity']
         self.Rainfall_simulation = PlantingArray['Simulate_rainfall']
         self.type_irrigation = PlantingArray['Type_irrigation']
-        self.Num_neutron_measurements = PlantingArray['Number_of_days_of_neutron_readings']
         self.Rain_infiltration_calculation = PlantingArray['Rain_infiltration_calculation']    #Boolean to determine if infiltration is calculated with Green ampt or SCS or is just assigned the rain_partition as the fraction
 
         self.Neglect_upper_layer_in_depletion_calc = PlantingArray['NeglectEvaporationLayerDepletion'] #Boolean that is true if upper layer is  not included in the calculation of percent depletion
-        self.Preirrigation = PlantingArray['Preirrigation_TF']
-        self.Preirrigation_starting_DOY = PlantingArray['Preirrigation_start_DOY']
         self.pTable22 = PlantingArray['MAD_p_Table22']                          #The management allowable depletion (MAD) value from table 22 in FAO56. It is then adjusted for evaporation rate. fraction, 5 digits
         self.adjust_P = PlantingArray['Adjust_p']
         self.Max_yield = PlantingArray['Max_yield']                          #in case of economic forecast, this is in the model, but it is not currently used. (kg/ha) (Real number, 8 digits)
@@ -487,8 +166,6 @@ class plantings:
         self.Eliminate_surface_evaporation = PlantingArray['Eliminate_surface_evaporation']
         self.DOY_to_eliminate_surface_evaporation = PlantingArray['DOY_to_eliminate_surface_evaporation']
         self.Num_wetting_phases = PlantingArray['Num_wetting_phases']  #this is the number of wetting phases, such as 
-        self.FW_phase_DOY = np.zeros(6)
-        self.FW_Type = np.zeros(6)
         self.FW_phase_DOY_1 = PlantingArray['Wetting_switch_day_1']
         self.FW_phase_DOY_2 = PlantingArray['Wetting_switch_day_2']
         self.FW_phase_DOY_3 = PlantingArray['Wetting_switch_day_3']
@@ -503,12 +180,13 @@ class plantings:
 #Salinity parameters
         self.ECiw = PlantingArray['Irrigation_water_EC'] #Salinity of the irrigation water, ranges from 0 to 5, decimal, dS/m, 5 digits
         self.Max_S = PlantingArray['Maximum_soluble_EC_act'] #Maximum solubility of salts in soil solution, actual salinity, EC, dS/m, 8 digits
-        self.WasteAppTF = 0
-        self.Waste_app_date = PlantingArray['Date_of_salinity_application'] #Date of waste (manure) application   mm/dd/yyyy
+        self.Waste_app_DOY = PlantingArray['DOY of salinity application'] #Date of waste (manure) application   mm/dd/yyyy
         self.Waste_sal_kgha = PlantingArray['Rate_of_salinity_application_kgha'] #The kg/ha of salts in waste applied to the field, decimal, 5 digits
         self.Waste_dissolution = PlantingArray['Rate_of_dissolution'] #1/number of days for waste to dissolve, fraction, 5 digits
         self.ECe_thresh = PlantingArray['ECe_thresh'] #the threshhold ECe, below which there is no reduction in growth, real number, 5 digits
         self.b_sal = PlantingArray['b_sal'] #The slope of the yield, ECe line
+        self.WasteAppTF = PlantingArray['WasteAppTF']
+        
 #Nitrogen parameters
         self.nit_dissolution = PlantingArray['Fertilizer_dissolution_rate'] #1/days to dissolve into soil, fraction, 5 digits
         self.Kmnl = PlantingArray['Kmnl'] # Mineralization constant /day, fraction 8 digits
@@ -520,11 +198,11 @@ class plantings:
         self.Kden = PlantingArray['Kden'] #Denitrification constant, /day, fraction, 8 digits
         self.Nmin = PlantingArray['Nmin'] # M-Menton coefficient, (mg NO3-N)/(kg soil), decimal, 5 digits
         self.Km = PlantingArray['Km'] #M-Menton coefficient, (mg NO3-N)/(kg soil), decimal, 5 digits
-        self.Frac_NO3 = PlantingArray['NeglectEvaporationLayerDepletion'] # Fraction of total nitrogen req. taken up as nitrate (vs. ammonium), decimal, 5 digits
+        self.Frac_NO3 = PlantingArray['Fraction_N_req_taken_as_nitrate'] # Fraction of total nitrogen req. taken up as nitrate (vs. ammonium), decimal, 5 digits
         self.Seasonal_N_uptake = PlantingArray['Seas_N_requirement'] # Total seasonal nitrogen requirement, kg/ha, real, 5 digits
-        self.Fert1_date = PlantingArray['Date_of_Fert_app_1'] #Date on which first fertilization takes place mo/da/year
-        self.Fert2_date = PlantingArray['Date_of_Fert_app_2'] #Date on which second fertilization takes place  mo/da/year
-        self.Fert3_date = PlantingArray['Date_of_Fert_app_3'] #Date on which third fertilization takes place mo/da/year
+        self.Fert1_DOY = PlantingArray['DOY_of_Fert_app_1'] #Date on which first fertilization takes place mo/da/year
+        self.Fert2_DOY = PlantingArray['DOY_of_Fert_app_2'] #Date on which second fertilization takes place  mo/da/year
+        self.Fert3_DOY = PlantingArray['DOY_of_Fert_app_3'] #Date on which third fertilization takes place mo/da/year
         self.Fert1_rate = PlantingArray['Rate_of_application_1'] #Rate of fertilizer application 1 (kg/ha) real, 8 digits
         self.Fert2_rate = PlantingArray['Rate_of_application_2'] #Rate of fertilizer application 2 (kg/ha) real, 8 digits
         self.Fert3_rate = PlantingArray['Rate_of_application_3'] #Rate of fertilizer application 3 (kg/ha) real, 8 digits
@@ -548,80 +226,47 @@ class plantings:
         self.A0 = PlantingArray['A0'] #Rate of yield decrease above optimal N uptake range
         self.diff = PlantingArray['Soil_thermal_diffusivity']
 
-    def Set_dates_and_data_sources(self, i):
-        if self.LastSimulatedDOE[i] == 0:
-            self.FirstDate = self.DateP[i]
-            self.First_day = 0
-            if self.RunToCurrentDay[i] == 0: #this is the case for running the entire season
-                self.final_day = self.Max_Days[i]
-            else: #Case 2: where it starts at beginning of season and runs to current day + forecast
-               # self.Current_day = dt.datetime.now() + dt.timedelta(days = int(self.ForecastDays[i] - 1))
-                #self.Current_day = datetime.datetime.today().strftime('%Y-%m-%d') + dt.timedelta(days = int(self.ForecastDays[i] - 1))
-                #now=datetime.now()
-                self.Current_day=dt.now()+timedelta(days = int(self.ForecastDays[i] - 1)) # we can twig forecast days in the plantings sheet
-                if self.Current_day > self.DateP[i] + timedelta(days = int(self.Max_Days[i])):
-                    self.final_day = self.Max_Days[i]
-                else:    
-                    #self.final_day = ((dt.datetime.now() + dt.timedelta(days = int(self.ForecastDays[i]))) - self.DateP[i]).days
-                    self.final_day = ((dt.now() + timedelta(days = int(self.ForecastDays[i]))) - self.DateP[i]).days
-        else: 
-            self.FirstDate = self.LastSimulatedDate[i]
-            self.First_day = self.LastSimulatedDOE[i]
-            if self.RunToCurrentDay[i] == 0:#this is the case where part of the season is past and runs to the end
-                self.final_day = int(self.Max_Days[i] - self.LastSimulatedDOE[i])
-            else: #this is the case where part of the season is past and running to current day.
-                self.Current_day = dt.now() + timedelta(days = int(self.ForecastDays[i] - 1))
-                #self.final_day = (self.Current_day - self.DateP[i]).days - self.LastSimulatedDOE[i]
-                self.final_day = 25 #This is just for practice
-
 class fields:
     def __init__(self, Field_Array):
-        self.FieldIDF = Field_Array['fid']                               #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.FieldNameF = Field_Array['Field Name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
-        self.AccountIDF = Field_Array['aid']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.Num_layers = Field_Array['Num_layers']                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
-        self.TEW = Field_Array['TEW'] #Total evaporable water in the evaporation layer (read in as cm, decimal 8 digits)
-        self.REW = Field_Array['REW'] #Readily evaporable water in the evaporation layer (read in as cm, decimal, 8 digits)
-        self.Intake_family = Field_Array['Intake_family']              #Boolean to determine whether SCS curve numbers are used to determine infiltration
-        self.NRCS_a = Field_Array['NRCS_a']                                  #The SCS a value for Kostiakov infiltration (decimal, 5 digits)
-        self.NRCS_b = Field_Array['NRCS_b']                                  #The SCS b value for Kostiakov infiltration (decimal, 5 digits)
-        self.H0 = Field_Array['H0']                    #Depth of water ponded in field if Green Ampt is used to calculate infiltration (I do not know why this is cm but it is) (decimal 5 digits)
-        self.SAV = Field_Array['SAV']                                    #Suction at wetting front (cm) decimal 5 digits, used for Green Ampt infiltration
-        self.Water_table_simulation = Field_Array['Water_table_simulation'] #Boolean that is true if there is a water table and leaching is restricted by drainage system
-        self.Begin_equil = Field_Array['Begin_with_soil_water_in_equilibrium_with_WT']
-        self.Init_zwt = Field_Array['Initial_water_table_elevation'] #Initial height of the water table on the day before planting (decimal, 5 digits, meters)
-        self.Drain_elevation = Field_Array['Drain_Elevation'] #Elevation of the drain within  the soil profile (decimal, 5 digits, meters)
-        self.Kirkham_rate = Field_Array['Drainage_controlled_by_Kirkham'] #Boolean that is true if the Kirkham algorithm is used to calculate drainage rate
-        self.Drain_rate = Field_Array['Multiplier_for_linear'] #A multiplier that calculates drainage rate as a function of water table height (decimal, 8 digits, dimensionless) if not using Kirkham method
-        self.Drain_imp = Field_Array['Drain_elevation_above_impermeable'] #The elevation of the drain above the impermeable layer (decimal, 8 digits, meters), currently used in Kirkham form
-        self.L_drain = Field_Array['Distance_between_drains'] #The distance between drains (decimal, 8 digits, m), currently used in Kirkham form
-        self.Keff_horizontal = Field_Array['Effective_lateral_K'] #Effective horizontal conductivity (m/day, 8 digits, decimal), currently used in Kirkham form
-        self.re = Field_Array['Effective_drain_radius'] #Effective drain radius, m (decimal, 8 digits)
-        self.Horizontal_distance_from_drain = Field_Array['Horizontal_distance_from_drain']
-        self.Kirkham_F = Field_Array['Kirkham_f'] #Calculated value based on drainage geometry (m/day, decimal, 8 digits)
-        self.Max_layer_of_equilibrium_layers = Field_Array['Max_equilibrium_layer']
-        self.Equil_max_init = Field_Array['Starting_equilibrium_layer'] #this is the fraction of water in the soil, above which a layer is considered in equilibrium with the water table, fraction, 5 digits
-        self.Keep_equilibrium_layers_out_of_root_zone = Field_Array['Keep_equilibrium_layers_out_of_root_zone'] #Boolean that is true if equilibrium layers in drainage simulation are not allowed to enter the root zone
-        self.Fraction_of_saturation_for_equilibrium = Field_Array['Fraction_of_saturation_for_equilibrium'] #Fraction of saturation for equilibrium, fraction, 5 digits
-        self.Continue_drainage_rate = Field_Array['Continue_drainage_rate']
+        print(Field_Array)
+        self.FieldNum = Field_Array['Field num']                               #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.FieldName = Field_Array['Field name']                             #The name of the field (text), which normally includes the owner and field, such as GaryField1
+        self.AccountNum = int(Field_Array['Account num'])                       #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.AccountName = Field_Array['Account name']                              #The long random identifier that represents the owner, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.Num_layers = int(Field_Array['Num_layers'])                        #The number of layers (integer), not including the evaporation layer, that will be modeled in the current planting, which may be less than the number of field layers
+        self.SAV = float(Field_Array['SAV'])                                    #Suction at wetting front (cm) decimal 5 digits, used for Green Ampt infiltration
+        self.H0 = float(Field_Array['H0'])                   #Depth of water ponded in field if Green Ampt is used to calculate infiltration (I do not know why this is cm but it is) (decimal 5 digits)
+        self.REW = float(Field_Array['REW']) #Readily evaporable water in the evaporation layer (read in as cm, decimal, 8 digits)
+        self.TEW = float(Field_Array['TEW']) #Total evaporable water in the evaporation layer (read in as cm, decimal 8 digits)
+        self.NRCS_a = float(Field_Array['NRCS_a'])                                  #The SCS a value for Kostiakov infiltration (decimal, 5 digits)
+        self.NRCS_b = float(Field_Array['NRCS_b'])                                  #The SCS b value for Kostiakov infiltration (decimal, 5 digits)
+        self.Intake_family = float(Field_Array['Intake_family'])              #Boolean to determine whether SCS curve numbers are used to determine infiltration
+        self.Water_table_simulation = int(Field_Array['Water_table_simulation']) #Boolean that is true if there is a water table and leaching is restricted by drainage system
+        self.Begin_equil = int(Field_Array['Begin_with_soil_water_in_equilibrium_with_WT'])
+        self.Init_zwt = float(Field_Array['Initial_water_table_elevation']) #Initial height of the water table on the day before planting (decimal, 5 digits, meters)
+        self.Drain_elevation = float(Field_Array['Drain_Elevation']) #Elevation of the drain within  the soil profile (decimal, 5 digits, meters)
+        self.Kirkham_rate = int(Field_Array['Drainage_controlled_by_Kirkham']) #Boolean that is true if the Kirkham algorithm is used to calculate drainage rate
+        self.Drain_rate = float(Field_Array['Multiplier_for_linear']) #A multiplier that calculates drainage rate as a function of water table height (decimal, 8 digits, dimensionless) if not using Kirkham method
+        self.Drain_imp = float(Field_Array['Drain_elevation_above_impermeable']) #The elevation of the drain above the impermeable layer (decimal, 8 digits, meters), currently used in Kirkham form
+        self.L_drain = float(Field_Array['Distance_between_drains']) #The distance between drains (decimal, 8 digits, m), currently used in Kirkham form
+        self.Keff_horizontal = float(Field_Array['Effective_lateral_K']) #Effective horizontal conductivity (m/day, 8 digits, decimal), currently used in Kirkham form
+        self.re = float(Field_Array['Effective_drain_radius']) #Effective drain radius, m (decimal, 8 digits)
+        self.Horizontal_distance_from_drain = float(Field_Array['Horizontal_distance_from_drain'])
+        self.Kirkham_F = float(Field_Array['Kirkham_f']) #Calculated value based on drainage geometry (m/day, decimal, 8 digits)
+        self.Max_layer_of_equilibrium_layers = float(Field_Array['Max_equilibrium_layer'])
+        self.Equil_max_init = float(Field_Array['Starting_equilibrium_layer']) #this is the fraction of water in the soil, above which a layer is considered in equilibrium with the water table, fraction, 5 digits
+        self.Keep_equilibrium_layers_out_of_root_zone = float(Field_Array['Keep_equilibrium_layers_out_of_root_zone']) #Boolean that is true if equilibrium layers in drainage simulation are not allowed to enter the root zone
+        self.Fraction_of_saturation_for_equilibrium = float(Field_Array['Fraction_of_saturation_for_equilibrium']) #Fraction of saturation for equilibrium, fraction, 5 digits
+        self.Continue_drainage_rate = float(Field_Array['Continue_drainage_rate'])
         self.Rain_partition = 1
         
-class spatial:
-    def __init__(self, SpatialArray):
-        self.PlantingIDS = np.array(SpatialArray['PlantingID'])                      #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.PlantingNameS = np.array(SpatialArray['plantname'])                     #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.LocationS = np.array(SpatialArray['Location'])                           #The position (location) in the planting, integer
-        self.AltLocationName = np.array(SpatialArray['AltLocationName'])             #The locations are numbered from 1 on, but the owner might have different names for the locations, text, 30 letters
-        self.FieldIDS = np.array(SpatialArray['FieldID'])                             #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.SoilGroup = np.array(SpatialArray['SoilGroup'])
-        self.IrrigationGroup = np.array(SpatialArray['IrrigationGroup'])
-        
+    
 class soil:
     def __init__(self, SoilArray):
-        self.SoilGroup = np.array(SoilArray['SoilGroup'])                          #The position (location) in the planting, integer
-        self.FieldIDSo = np.array(SoilArray['FieldID'])                            #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.LayerNumber = np.array(SoilArray['LayerNumber'])
-        self.Depth = np.array(SoilArray['Depth'])                         #The depth of the bottom of the layer, cm, decimal, 8 digits
+        SoilArray = SoilArray.sort_values('Layer')
+        self.FieldNum = np.array(SoilArray['Field num'])                            #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.LayerNumber = np.array(SoilArray['Layer'])
+        self.Depth = np.array(SoilArray['Depth'])  
         self.InitWC = SoilArray['InitWC']
         self.switch_wetting_phase = 400
         self.FC = np.array(SoilArray['FC'])                                #The field capactiy of the layer, percentage, decimal, 8 digits
@@ -633,10 +278,7 @@ class soil:
         self.tr = np.array(SoilArray['ResWC'])                             #Residual water content, from Brooks Corey, decimal, 8 digits
         self.Lv = np.array(SoilArray['Lv'])                                #Van Genuchten L, decimal, 8 digits
         self.Ko = np.array(SoilArray['Ko'])                                #Matching Ko (conductivity) used in Van Genuchten hydraulic conductivity equation, decimal, 8 digits
-        self.Fw1 = np.array(SoilArray['Fw1'])                              #Fraction wetted in soil layer in initial part of season, fraction, decimal, 8 digits
-        self.Fw2 = np.array(SoilArray['Fw2'])                              #Fraction wettted in soil layer in latter part of season, fraction, decimal, 8 digits
         self.InitECe = np.array(SoilArray['ECe_init'])                     #The initial ECe at the beginning of the season in the layer, dS/m, decimal, 8 digits
-        self.ETfrac = np.array(SoilArray['ETfrac'])                         #This is the ET fractions from the old model 
         self.InitsoilN = np.array(SoilArray['Initial_soil_N'])              #Initial nitrogen concentration mg/L soil
         self.Org = np.array(SoilArray['Organic_matter'])              #Initial nitrogen concentration mg/L soil
         self.dz = np.zeros([len(self.Depth)+1])                               #the thickness of the layer, m, decimal, 8 digits
@@ -669,7 +311,8 @@ class soil:
         self.Depth = self.Depth / 100
         self.dz[0] = self.Depth[0]
         self.Z_top_ave[0] = self.Depth[0] / 2
-        for i in range(1, self.Num_layers + 1):
+        print(self.Num_layers, self.Depth, 'here')
+        for i in range(1, self.Num_layers+1):
             self.dz[i] = self.Depth[i] - self.Depth[i+1]
         self.dz[self.Num_layers + 1] = self.Depth[self.Num_layers + 1]
         for i in range(1, self.Num_layers + 2):
@@ -693,125 +336,158 @@ class soil:
                     self.zl[i] = self.Depth[1] - self.Depth[i]
                self.Zave[i] = (self.zu[i] + self.zl[i]) / 2 
        
-        self.max_array_length = int(self.Max_Days)
-        self.FW_layers = np.zeros((self.max_array_length + 1, self.Num_layers + 2))
-        print('FW stuff', self.Fw1)
 
-        for j in range(1, self.max_array_length + 1):
+class ET_fractions:
+    def __init__(self, ET_Fractions_Array):
+
+        self.ET_fractions = np.zeros((self.Num_layers + 2, self.Num_layers + 2))
+
+        for j in range(1, int(self.Num_layers) + 2):
             for k in range(1, int(self.Num_layers) + 2):
-                if j < self.switch_wetting_phase:
-                    self.FW_layers[j][k] = self.Fw1[k]
-                else:
-                    self.FW_layers[j][k] = self.Fw2[k]
-                print('FW stuff', self.Fw1[k])
+                    self.ET_fractions[j][k] = ET_Fractions_Array.iloc[13-k][self.Num_layers + 5-j]
+                    
+                    
+class Wetting_fractions:
+    def __init__(self, Wetting_Fractions_Array):
 
+        self.FW_layers = np.zeros((self.EndDOY + 1, self.Num_layers + 2))
+
+        for j in range(1, self.EndDOY + 1):
+            for k in range(1, int(self.Num_layers) + 2):
+                if j < self.FW_phase_DOY_1:
+                    self.FW_layers[j][k] = Wetting_Fractions_Array.iloc[0][4+k]
+                elif j < self.FW_phase_DOY2:
+                    self.FW_layers[j][k] = Wetting_Fractions_Array.iloc[1][4+k]
+                elif j < self.FW_phase_DOY3:
+                    self.FW_layers[j][k] = Wetting_Fractions_Array.iloc[2][4+k]
+                elif j < self.FW_phase_DOY4:
+                    self.FW_layers[j][k] = Wetting_Fractions_Array.iloc[3][4+k]
+                else:
+                    self.FW_layers[j][k] = Wetting_Fractions_Array.iloc[4][4+k]
+                    
+class irrigation:
+    def __init__(self, IrrigationArray):
+        self.Irrigation_depth = np.zeros(self.NumDays+1)
+        self.Depth_ref = np.array(IrrigationArray['Ref_mm']) 
+        Sec_name = 'Sec_' + str(self.IrrSection)
+        self.Multiplier = np.array(IrrigationArray[Sec_name])
+        self.DOY = np.array(IrrigationArray['DOY'])
+        for i in range(0, len(IrrigationArray)):
+            self.Irrigation_depth[self.DOY[i]-self.StartDOY] = self.Depth_ref[i]*self.Multiplier[i]
+
+
+class status:
+    def __init__(self, Status_Array):
+
+        self.Water_Start = np.zeros(len(Status_Array)+1)                              #Readily available water from the top of profile down to and including the layer, m, decimal, 8 digits
+        self.Salinity_Start = np.zeros(len(Status_Array)+1)                              #Readily available water from the top of profile down to and including the layer, m, decimal, 8 digits
+        self.Nitrogen_Start = np.zeros(len(Status_Array)+1)                              #Readily available water from the top of profile down to and including the layer, m, decimal, 8 digits
+
+        for k in range(1, int(self.Num_layers) + 2):
+            self.Water_Start[k] = Status_Array.iloc[k][4]
+            self.Salinity_Start[k] = Status_Array.iloc[k][5]
+            self.Nitrogen_Start[k] = Status_Array.iloc[k][6]
+                    
+class output:
+    def __init__(self, Output_Array):
+        self.datelist = [self.StartDate + timedelta(days = x) for x in range(0, 1 + self.NumDays)]
+        self.DOY = np.zeros(self.NumDays)
+        self.DOY[0] = self.StartDOY
+        self.PlantingIDO = np.empty(self.NumDays, dtype = object)                  #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.PlantingNameO = np.empty(self.NumDays, dtype = object)                 #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+        self.LocationO = np.zeros(self.NumDays)                     #The position (location) in the planting, integer
+        self.NDVI = np.zeros(self.NumDays)                          #The NDVI measured by remote sensing for the location, decimal 8 digits
+        self.NDVI_regression = np.zeros(self.NumDays)               #The interpolated NDVI by regression, decimal 8 digits
+        self.Kcb_NDVI = np.zeros(self.NumDays)                      #The Kcb calculated from the NDVI regression, decimal 8 digits
+        self.Kcb_calculated = np.zeros(self.NumDays)                #The Kcb calculated from FAO equations, decimal 8 digits
+        self.Kcb = np.zeros(self.NumDays)                           #The Kcb used in the program, decimal 8 digits                            
+        self.one_minus_c = np.zeros(self.NumDays)                   #The one minus the fraction of the canopy area (ground area fraction), decimal 8 digits
+        self.Crop_height = np.zeros(self.NumDays)        #The h8 of the crop in meters, decimal 8 digits
+        self.Root = np.zeros(self.NumDays)                #The depth of the root in meters, decimal 8 digits
+        self.Ke = np.zeros(self.NumDays)                       #The evaporation coefficient, decimal 8 digits
+        self.E = np.zeros(self.NumDays)                       #The evaporation from the soil surface, mm, decimal 8 digits
+        self.ET_trans = np.zeros(self.NumDays)        #The transpiration from the plant, mm, decimal 8 digits
+        self.ET = np.zeros(self.NumDays)                         #The evapotranspiration from the crop, mm, decimal 8 digits
+        self.ET_pot = np.zeros(self.NumDays)         #The potential transpiration from the crop, decimal 8 digits
+        self.ETcum = np.zeros(self.NumDays)      #The cumulative potential evapotranspiration for the season, decimal 8 digits
+        self.ET_actual_cum = np.zeros(self.NumDays)#The cumulative actual evapotranspiration for the season, decimal 8 digits
+        self.ET_refO = np.zeros(self.NumDays)
+        self.Ky = np.zeros(self.NumDays)                           #The daily crop sensitivity to water stress
+        self.Depletion_total = np.zeros(self.NumDays)  #The depth of depletion, mm, decimal 8 digits
+        self.Percent_depletion_total = np.zeros(self.NumDays) #The percent depletion, percentage, decimal 8 digits
+        self.Irrigation = np.zeros(self.NumDays)           #The depth of irrigation applied, mm, decimal 8 digits
+        self.P = np.zeros(self.NumDays)                           #The management allowed depletion, fraction, decimal 8 digits
+        self.Rainfall = np.zeros(self.NumDays)                #The rainfall depth, mm, decimal 8 digits
+        self.Rain_Infilt = np.zeros(self.NumDays)
+        self.wet_Rain_Infilt = np.zeros(self.NumDays)
+        self.FCave = np.zeros(self.NumDays)                 #The average field capacity for soil profilel, decimal 8 digits
+        self.PWPave = np.zeros(self.NumDays)                #The average permanent wilting point for soil profilel, decimal 8 digits
+        self.TAWsum = np.zeros(self.NumDays)                #The average permanent wilting point for soil profilel, decimal 8 digits
+        self.RAWsum = np.zeros(self.NumDays)                #The average permanent wilting point for soil profilel, decimal 8 digits
+        self.AW =np.zeros(self.NumDays)                 #The amount of water left in the soil for the plant, mm, decimal 8 digits
+        self.VWCave = np.zeros(self.NumDays)                #The average volumetric water content for the soil profile, fraction, decimal 8 digits
+        self.TDW = np.zeros(self.NumDays)                   #The total depth of water in the soil profile, mm, decimal 8 digits           
+        self.zwt = np.zeros(self.NumDays)                   #The water table elevation above the datum, m, decimal 8 digits
+        self.Equilibrium_Max = np.zeros(self.NumDays)       #The number of the upper layer that is in equilibrium with the water table, integer
+        self.zu_Eq_Max = np.zeros(self.NumDays)       #The number of the upper layer that is in equilibrium with the water table, integer
+        self.Ks = np.zeros(self.NumDays)                    #Ks which is the fraction of decreased evapotranspiration due to limited water, decimal, 8 digits
+        self.Irr_Sal = np.zeros(self.NumDays)              #The salt mass added by irrigation water, mg/L m, decimal, 8 digits
+        self.Waste_sal = np.zeros(self.NumDays)            #The salt mass added by waste, mg/L m, decimal, 8 digits
+        self.Irr_Salt_Added = np.zeros(self.NumDays)               #The salt mass lost by seepage, mg/L m, decimal, 8 digits
+        self.Waste_Salt_Added = np.zeros(self.NumDays)           #The mass balance of all salts added or lost, mg/L m, decimal, 8 digits
+        self.Seepage = np.zeros(self.NumDays)               #The salt mass lost by seepage, mg/L m, decimal, 8 digits
+        self.SumOfFluxes = np.zeros(self.NumDays)           #The mass balance of all salts added or lost, mg/L m, decimal, 8 digits
+        self.Total_salt = np.zeros(self.NumDays)              #Total mass of salt in the root zone, mg/L m, decimal, 8 digits      
+        self.SaltDiff = np.zeros(self.NumDays)              #Difference in total salt between day before and present day (should equal sum of fluxes), mg/L m, decimal, 8 digits
+        self.Ks_salt = np.zeros(self.NumDays)                #The reduction in ET due to salt stress, fraction, 5 digits
+        self.Ks_nit = np.zeros(self.NumDays)                  #The reduction in ET due to nitrogen stress, fraction, 5 digits
+        self.TotalIrrN = np.zeros(self.NumDays)         #Total nitrate added by irrigation to soil profile on each day, mg/L m, decimal, 8 digits
+        self.TotalDrainN = np.zeros(self.NumDays)          #Total nitrate removed by drainage from soil profile on each day, mg/L m, decimal, 8 digits
+        self.SumReactionsN = np.zeros(self.NumDays)       #Total of daily reactions (should equal sum of four rections), mg/L m, decimal, 8 digits
+        self.SumFluxReactionsN = np.zeros(self.NumDays)  #Total of daily fluxes and reactions (should equal mass difference), mg/L m, decimal, 8 digits
+        self.Total_Min = np.zeros(self.NumDays)          #Total mineralization in soil profile on each day, mg/L m, decimal, 8 digits
+        self.Total_Den = np.zeros(self.NumDays)         #Total denitrification in soil profile on each day, mg/L m, decimal, 8 digits
+        self.Total_Fer = np.zeros(self.NumDays)        #Total fertilization in soil profile on each day, mg/L m, decimal, 8 digits
+        self.Total_Upt = np.zeros(self.NumDays)         #Total uptake in soil profile on each day, mg/L m, decimal, 8 digits
+        self.UptakeReq = np.zeros(self.NumDays)         #Plant uptake requirement, mg/L m, decimal, 8 digit
+        self.Total_nit = np.zeros(self.NumDays)          #Total nitrate in soil profile on each day, mg/L m, decimal, 8 digits
+        self.Total_nit_accum = np.zeros(self.NumDays)          #Total nitrate accumulated in season, mg/L m, decimal, 8 digits
+        self.N_ave = np.zeros(self.NumDays)                #Total mineralization in soil profile on each day, mg/L m, decimal, 8 digits
+        self.N_optimal_low = np.zeros(self.NumDays)   #'Calculated with range_frac in N simulation section, lower limit of optimal soil N mg/kg
+        self.N_optimal_high = np.zeros(self.NumDays) #'Calculated with range_frac in N simulation section, upper limit of optimal soil N mg/kg
+        self.Cum_Min = np.zeros(self.NumDays)              #Cumulative mineralization in soil profile during season, mg/L m, decimal, 8 digits
+        self.Cum_Den = np.zeros(self.NumDays)             #Cumulative denitrification in soil profile during season, mg/L m, decimal, 8 digits
+        self.Cum_Fer = np.zeros(self.NumDays)             #Cumulative fertilization in soil profile during season, mg/L m, decimal, 8 digits
+        self.Cum_Upt = np.zeros(self.NumDays)              #Cumulative uptake in soil profile during season, mg/L m, decimal, 8 digits
+        self.CumIrrN = np.zeros(self.NumDays)             #Cumulative nitrate added by irrigation to soil profile during season, mg/L m, decimal, 8 digits
+        self.CumDrnN = np.zeros(self.NumDays)             #Cumulative nitrate removed by drainage from soil profile during season, mg/L m, decimal, 8 digits
+        self.CumChangeN = np.zeros(self.NumDays)       #Cumulative nitrate change in soil profile during season, mg/L m, decimal, 8 digits
+        self.EC_leach_eqn = np.zeros(self.NumDays)
+        self.Ks_water_total = np.zeros(self.NumDays)
+        self.Kcmax = np.zeros(self.NumDays)
+        self.Kr = np.zeros(self.NumDays)
+        self.Few = np.zeros(self.NumDays)
+        self.E_wet = np.zeros(self.NumDays)
+        self.Rain_infilt = np.zeros(self.NumDays)
+        self.dry_Rain_infilt = np.zeros(self.NumDays)
+        self.wet_Rain_infilt = np.zeros(self.NumDays)
+        self.ET_trans_wet = np.zeros(self.NumDays)
+        self.Ps = np.zeros(self.NumDays)
+        self.ECe_ave_effective = np.zeros(self.NumDays)
+        self.Fert1 = np.zeros(self.NumDays)
+        self.Fert2 = np.zeros(self.NumDays)
+        self.Fert3 = np.zeros(self.NumDays)
+        self.Fert = np.zeros(self.NumDays)
+        self.Irr_Nit = np.zeros(self.NumDays)
+        self.N_leach_eqn = np.zeros(self.NumDays)
+        self.N_upt = np.zeros(self.NumDays)
+        self.N_max = np.zeros(self.NumDays)
+        self.mupt_entire_profile = np.zeros(self.NumDays)   
+        self.Nitrogen_Kcb = np.zeros(self.NumDays)   
+        self.KN_low = np.zeros(self.NumDays)   
+        self.KN_high = np.zeros(self.NumDays)
         
-class model(plantings, fields, soil, weather):
-    def __init__(self, PlantingArray, Field_Array, SoilArray, WeatherArray):
-        plantings.__init__(self, PlantingArray)
-        fields.__init__(self, Field_Array)
-        soil.__init__(self, SoilArray)
-        weather.__init__(self, WeatherArray)
-        
-    def SetOutputArrays(self, Last_date, Last_DOE, final_day, OutputArray):       
-        self.datelist = [Last_date + timedelta(days = x) for x in range(0, 1 + int(final_day))]
-        self.DOE = [Last_DOE + x for x in range(0, final_day)]
-        self.DOY = np.zeros(final_day)
-        self.PlantingIDO = np.empty(final_day, dtype = object)                  #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.PlantingNameO = np.empty(final_day, dtype = object)                 #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.LocationO = np.zeros(final_day)                     #The position (location) in the planting, integer
-        self.NDVI = np.zeros(final_day)                          #The NDVI measured by remote sensing for the location, decimal 8 digits
-        self.NDVI_regression = np.zeros(final_day)               #The interpolated NDVI by regression, decimal 8 digits
-        self.Kcb_NDVI = np.zeros(final_day)                      #The Kcb calculated from the NDVI regression, decimal 8 digits
-        self.Kcb_calculated = np.zeros(final_day)                #The Kcb calculated from FAO equations, decimal 8 digits
-        self.Kcb = np.zeros(final_day)                           #The Kcb used in the program, decimal 8 digits                            
-        self.one_minus_c = np.zeros(final_day)                   #The one minus the fraction of the canopy area (ground area fraction), decimal 8 digits
-        self.Crop_height = np.zeros(final_day)        #The h8 of the crop in meters, decimal 8 digits
-        self.Root = np.zeros(final_day)                #The depth of the root in meters, decimal 8 digits
-        self.Ke = np.zeros(final_day)                       #The evaporation coefficient, decimal 8 digits
-        self.E = np.zeros(final_day)                       #The evaporation from the soil surface, mm, decimal 8 digits
-        self.ET_trans = np.zeros(final_day)        #The transpiration from the plant, mm, decimal 8 digits
-        self.ET = np.zeros(final_day)                         #The evapotranspiration from the crop, mm, decimal 8 digits
-        self.ET_pot = np.zeros(final_day)         #The potential transpiration from the crop, decimal 8 digits
-        self.ETcum = np.zeros(final_day)      #The cumulative potential evapotranspiration for the season, decimal 8 digits
-        self.ET_actual_cum = np.zeros(final_day)#The cumulative actual evapotranspiration for the season, decimal 8 digits
-        self.ET_refO = np.zeros(final_day)
-        self.Ky = np.zeros(final_day)                           #The daily crop sensitivity to water stress
-        self.Depletion_total = np.zeros(final_day)  #The depth of depletion, mm, decimal 8 digits
-        self.Percent_depletion_total = np.zeros(final_day) #The percent depletion, percentage, decimal 8 digits
-        self.Irrigation = np.zeros(final_day)           #The depth of irrigation applied, mm, decimal 8 digits
-        self.P = np.zeros(final_day)                           #The management allowed depletion, fraction, decimal 8 digits
-        self.Rainfall = np.zeros(final_day)                #The rainfall depth, mm, decimal 8 digits
-        self.Rain_Infilt = np.zeros(final_day)
-        self.wet_Rain_Infilt = np.zeros(final_day)
-        self.FCave = np.zeros(final_day)                 #The average field capacity for soil profilel, decimal 8 digits
-        self.PWPave = np.zeros(final_day)                #The average permanent wilting point for soil profilel, decimal 8 digits
-        self.TAWsum = np.zeros(final_day)                #The average permanent wilting point for soil profilel, decimal 8 digits
-        self.RAWsum = np.zeros(final_day)                #The average permanent wilting point for soil profilel, decimal 8 digits
-        self.AW =np.zeros(final_day)                 #The amount of water left in the soil for the plant, mm, decimal 8 digits
-        self.VWCave = np.zeros(final_day)                #The average volumetric water content for the soil profile, fraction, decimal 8 digits
-        self.TDW = np.zeros(final_day)                   #The total depth of water in the soil profile, mm, decimal 8 digits           
-        self.zwt = np.zeros(final_day)                   #The water table elevation above the datum, m, decimal 8 digits
-        self.Equilibrium_Max = np.zeros(final_day)       #The number of the upper layer that is in equilibrium with the water table, integer
-        self.zu_Eq_Max = np.zeros(final_day)       #The number of the upper layer that is in equilibrium with the water table, integer
-        self.Ks = np.zeros(final_day)                    #Ks which is the fraction of decreased evapotranspiration due to limited water, decimal, 8 digits
-        self.Irr_Sal = np.zeros(final_day)              #The salt mass added by irrigation water, mg/L m, decimal, 8 digits
-        self.Waste_sal = np.zeros(final_day)            #The salt mass added by waste, mg/L m, decimal, 8 digits
-        self.Irr_Salt_Added = np.zeros(final_day)               #The salt mass lost by seepage, mg/L m, decimal, 8 digits
-        self.Waste_Salt_Added = np.zeros(final_day)           #The mass balance of all salts added or lost, mg/L m, decimal, 8 digits
-        self.Seepage = np.zeros(final_day)               #The salt mass lost by seepage, mg/L m, decimal, 8 digits
-        self.SumOfFluxes = np.zeros(final_day)           #The mass balance of all salts added or lost, mg/L m, decimal, 8 digits
-        self.Total_salt = np.zeros(final_day)              #Total mass of salt in the root zone, mg/L m, decimal, 8 digits      
-        self.SaltDiff = np.zeros(final_day)              #Difference in total salt between day before and present day (should equal sum of fluxes), mg/L m, decimal, 8 digits
-        self.Ks_salt = np.zeros(final_day)                #The reduction in ET due to salt stress, fraction, 5 digits
-        self.Ks_nit = np.zeros(final_day)                  #The reduction in ET due to nitrogen stress, fraction, 5 digits
-        self.TotalIrrN = np.zeros(final_day)         #Total nitrate added by irrigation to soil profile on each day, mg/L m, decimal, 8 digits
-        self.TotalDrainN = np.zeros(final_day)          #Total nitrate removed by drainage from soil profile on each day, mg/L m, decimal, 8 digits
-        self.SumReactionsN = np.zeros(final_day)       #Total of daily reactions (should equal sum of four rections), mg/L m, decimal, 8 digits
-        self.SumFluxReactionsN = np.zeros(final_day)  #Total of daily fluxes and reactions (should equal mass difference), mg/L m, decimal, 8 digits
-        self.Total_Min = np.zeros(final_day)          #Total mineralization in soil profile on each day, mg/L m, decimal, 8 digits
-        self.Total_Den = np.zeros(final_day)         #Total denitrification in soil profile on each day, mg/L m, decimal, 8 digits
-        self.Total_Fer = np.zeros(final_day)        #Total fertilization in soil profile on each day, mg/L m, decimal, 8 digits
-        self.Total_Upt = np.zeros(final_day)         #Total uptake in soil profile on each day, mg/L m, decimal, 8 digits
-        self.UptakeReq = np.zeros(final_day)         #Plant uptake requirement, mg/L m, decimal, 8 digit
-        self.Total_nit = np.zeros(final_day)          #Total nitrate in soil profile on each day, mg/L m, decimal, 8 digits
-        self.Total_nit_accum = np.zeros(final_day)          #Total nitrate accumulated in season, mg/L m, decimal, 8 digits
-        self.N_ave = np.zeros(final_day)                #Total mineralization in soil profile on each day, mg/L m, decimal, 8 digits
-        self.N_optimal_low = np.zeros(final_day)   #'Calculated with range_frac in N simulation section, lower limit of optimal soil N mg/kg
-        self.N_optimal_high = np.zeros(final_day) #'Calculated with range_frac in N simulation section, upper limit of optimal soil N mg/kg
-        self.Cum_Min = np.zeros(final_day)              #Cumulative mineralization in soil profile during season, mg/L m, decimal, 8 digits
-        self.Cum_Den = np.zeros(final_day)             #Cumulative denitrification in soil profile during season, mg/L m, decimal, 8 digits
-        self.Cum_Fer = np.zeros(final_day)             #Cumulative fertilization in soil profile during season, mg/L m, decimal, 8 digits
-        self.Cum_Upt = np.zeros(final_day)              #Cumulative uptake in soil profile during season, mg/L m, decimal, 8 digits
-        self.CumIrrN = np.zeros(final_day)             #Cumulative nitrate added by irrigation to soil profile during season, mg/L m, decimal, 8 digits
-        self.CumDrnN = np.zeros(final_day)             #Cumulative nitrate removed by drainage from soil profile during season, mg/L m, decimal, 8 digits
-        self.CumChangeN = np.zeros(final_day)       #Cumulative nitrate change in soil profile during season, mg/L m, decimal, 8 digits
-        self.EC_leach_eqn = np.zeros(final_day)
-        self.Ks_water_total = np.zeros(final_day)
-        self.Kcmax = np.zeros(final_day)
-        self.Kr = np.zeros(final_day)
-        self.Few = np.zeros(final_day)
-        self.E_wet = np.zeros(final_day)
-        self.Rain_infilt = np.zeros(final_day)
-        self.dry_Rain_infilt = np.zeros(final_day)
-        self.wet_Rain_infilt = np.zeros(final_day)
-        self.ET_trans_wet = np.zeros(final_day)
-        self.Ps = np.zeros(final_day)
-        self.ECe_ave_effective = np.zeros(final_day)
-        self.Fert1 = np.zeros(final_day)
-        self.Fert2 = np.zeros(final_day)
-        self.Fert3 = np.zeros(final_day)
-        self.Fert = np.zeros(final_day)
-        self.Irr_Nit = np.zeros(final_day)
-        self.N_leach_eqn = np.zeros(final_day)
-        self.N_upt = np.zeros(final_day)
-        self.N_max = np.zeros(final_day)
-        self.mupt_entire_profile = np.zeros(final_day)   
-        self.Nitrogen_Kcb = np.zeros(final_day)   
-        self.KN_low = np.zeros(final_day)   
-        self.KN_high = np.zeros(final_day)
-        
-        if Last_DOE > 0:
+        if self.SimStartDOY > self.StartDOY:
             self.DOY[0] = int(OutputArray['DOY'])
             self.NDVI[0] = OutputArray['NDVI']                        #The NDVI measured by remote sensing for the location, decimal 8 digits
             self.NDVI_regression[0] = OutputArray['NDVI_regression']  #The interpolated NDVI by regression, decimal 8 digits
@@ -878,8 +554,11 @@ class model(plantings, fields, soil, weather):
             self.CumChangeN[0] = OutputArray['CumChangeN']       #Cumulative nitrate change in soil profile during season, mg/L m, decimal, 8 digits
         self.DOY[0] = self.datelist[0].timetuple().tm_yday
         
-        for j in range(1, final_day - 1):
-            adj_j = j + Last_DOE
+        for j in range(1, self.NumDays - 1):
+            if self.StartDOY >= self.SimStartDOY:
+                adj_j = j + self.StartDOY
+            else:
+                adj_j = j + self.SimStartDOY
             if int(self.Select_Kcb) == 2:
                 self.DOY[j] = self.datelist[j].timetuple().tm_yday
                 self.KN_low[j]= 1.2
@@ -952,8 +631,11 @@ class model(plantings, fields, soil, weather):
                 self.waste_app_day = (self.waste_app_date - self.DateP).days
             else:
                 self.waste_app_day = 10000
-            for j in range(1, final_day):
-                adj_j = j + self.DOE[0]
+            for j in range(1, self.NumDays):
+                if self.StartDOY > self.SimStartDOY:
+                    adj_j = j + self.StartDOY
+                else:
+                    adj_j = j + self.SimStartDOY
                 self.Irr_Sal[j] = self.ECiw
                 self.EC_leach_eqn[j] = 0
                 if adj_j - self.waste_app_day > 0 and adj_j - self.waste_app_day - 1 < 1/self.Waste_dissolution:
@@ -971,8 +653,11 @@ class model(plantings, fields, soil, weather):
 
             self.Nitrogen_frac_sum = 0
 
-            for j in range(1, final_day):
-                adj_j = j + self.DOE[0]
+            for j in range(1, self.NumDays):
+                if self.StartDOY >= self.SimStartDOY:
+                    adj_j = j + self.StartDOY
+                else:
+                    adj_j = j + self.SimStartDOY
                 self.Fert[j] = 0
                 self.Irr_Nit[j] = self.Niw
                 self.N_leach_eqn[j] = 0
@@ -1000,56 +685,55 @@ class model(plantings, fields, soil, weather):
                 if self.Nitrogen_frac_sum == 0:
                     self.Nitrogen_frac_sum = 1
 
-    def SetOutputLayersArray(self, Last_DOE, final_day, Output_Layer_Array):
-        self.DAP = np.zeros((final_day, self.Num_layers + 2))                      #days after planting, integer
-        self.PlantingIDL = np.zeros((final_day, self.Num_layers + 2))              #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.PlantingNameL = np.zeros((final_day, self.Num_layers + 2))            #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.LocationL = np.zeros((final_day, self.Num_layers + 2))                #The position (location) in the planting, integer
-        self.Layer = np.zeros((final_day, self.Num_layers + 2))                    #The layer, integer        
-        self.WC = np.zeros((final_day, self.Num_layers + 2))                       #The water content in the soil layer, decimal, 8 digits
-        self.Depletion = np.zeros((final_day, self.Num_layers + 2))                #The depletion of water below field capacity (mm) in the soil layer, decimal, 8 digits
-        self.Act_frac = np.zeros((final_day, self.Num_layers + 2))                 #The fraction of total evaporated water that is removed from each soil layer, decimal, 8 digits
-        self.Infilt = np.zeros((final_day, self.Num_layers + 2))                   #The fraction of totol ET water that is evaporated from the particular layer, decimal, 8 digits
-        self.Percent_depletion = np.zeros((final_day, self.Num_layers + 2))        #The percent of the water between field capacity and permanent wilting point that is depleted from the layer, decimal, 8 digits
-        self.EC = np.zeros((final_day, self.Num_layers + 2))                       #The electrical conductivity of the actual water in the layer, dS/m, decimal, 8 digits
-        self.ECe = np.zeros((final_day, self.Num_layers + 2))                      #The electrical conductivity of the saturated paste extract from the layer, dS/m, decimal, 8 digits
-        self.Mass_salt = np.zeros((final_day, self.Num_layers + 2))                #The total mass of salt in the layer, decimal, 8 digits
-        self.N = np.zeros((final_day, self.Num_layers + 2))                        #Nitrate concentration in soil water, mg/L, decimal, 8 digits
-        self.N_soil = np.zeros((final_day, self.Num_layers + 2))                   #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
-        self.hc = np.zeros((final_day, self.Num_layers + 2))                   #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
+class output_layers:
+    def __init__(self, Output_Layer_Array):
+        self.DAP = np.zeros((self.NumDays, self.Num_layers + 2))                      #days after planting, integer
+        self.PlantingIDL = np.zeros((self.NumDays, self.Num_layers + 2))              #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
+        self.PlantingNameL = np.zeros((self.NumDays, self.Num_layers + 2))            #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
+        self.LocationL = np.zeros((self.NumDays, self.Num_layers + 2))                #The position (location) in the planting, integer
+        self.Layer = np.zeros((self.NumDays, self.Num_layers + 2))                    #The layer, integer        
+        self.WC = np.zeros((self.NumDays, self.Num_layers + 2))                       #The water content in the soil layer, decimal, 8 digits
+        self.Depletion = np.zeros((self.NumDays, self.Num_layers + 2))                #The depletion of water below field capacity (mm) in the soil layer, decimal, 8 digits
+        self.Act_frac = np.zeros((self.NumDays, self.Num_layers + 2))                 #The fraction of total evaporated water that is removed from each soil layer, decimal, 8 digits
+        self.Infilt = np.zeros((self.NumDays, self.Num_layers + 2))                   #The fraction of totol ET water that is evaporated from the particular layer, decimal, 8 digits
+        self.Percent_depletion = np.zeros((self.NumDays, self.Num_layers + 2))        #The percent of the water between field capacity and permanent wilting point that is depleted from the layer, decimal, 8 digits
+        self.EC = np.zeros((self.NumDays, self.Num_layers + 2))                       #The electrical conductivity of the actual water in the layer, dS/m, decimal, 8 digits
+        self.ECe = np.zeros((self.NumDays, self.Num_layers + 2))                      #The electrical conductivity of the saturated paste extract from the layer, dS/m, decimal, 8 digits
+        self.Mass_salt = np.zeros((self.NumDays, self.Num_layers + 2))                #The total mass of salt in the layer, decimal, 8 digits
+        self.N = np.zeros((self.NumDays, self.Num_layers + 2))                        #Nitrate concentration in soil water, mg/L, decimal, 8 digits
+        self.N_soil = np.zeros((self.NumDays, self.Num_layers + 2))                   #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
+        self.hc = np.zeros((self.NumDays, self.Num_layers + 2))                   #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
         self.WC_test = np.zeros((self.Num_layers + 2, 102))
-        self.WC_depth = np.zeros((final_day, self.Num_layers + 2))
-        self.Sum_depths = np.zeros(final_day)
-        self.Bottom_layer = np.zeros(final_day)
+        self.WC_depth = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.Sum_depths = np.zeros(self.NumDays)
+        self.Bottom_layer = np.zeros(self.NumDays)
         self.ts_depth = np.zeros(self.Num_layers + 2)
-        self.Total_TAW_Fw = np.zeros((final_day, self.Num_layers + 3))
-        self.Uptake = np.zeros((final_day, self.Num_layers + 2))
-        self.fmntemp = np.zeros((final_day, self.Num_layers + 2))
-        self.kgha = np.zeros((final_day, self.Num_layers + 2))
-        self.Net_accumulation = np.zeros((final_day, self.Num_layers + 2))
-        self.Cum_Drain = np.zeros((final_day, self.Num_layers + 2))
-        self.Cum_Irr = np.zeros((final_day, self.Num_layers + 2))
-        self.Cum_Total = np.zeros((final_day, self.Num_layers + 2))
+        self.Total_TAW_Fw = np.zeros((self.NumDays, self.Num_layers + 3))
+        self.Uptake = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.fmntemp = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.kgha = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.Net_accumulation = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.Cum_Drain = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.Cum_Irr = np.zeros((self.NumDays, self.Num_layers + 2))
+        self.Cum_Total = np.zeros((self.NumDays, self.Num_layers + 2))
         
         if len(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values) > 0:
             kk = int(Output_Layer_Array[Output_Layer_Array['Layer']==1].index.values)
         
         for k in range(1, self.Num_layers + 2):
-            self.DAP[0][k] = Last_DOE
-            if Last_DOE == 0:   
-                print('in here', self.InitWC[k])                                                       #The day of experiment, integer j
+            if self.SimStartDOY <= self.StartDOY:   
                 self.WC[0][k] = self.InitWC[k]
-                self.Depletion[0][k] = (self.FC[k] - self.WC[0][k]) * self.dz[k] * self.Fw1[k]
+                print('initial water content',self.InitWC[k])
+                self.Depletion[0][k] = (self.FC[k] - self.WC[0][k]) * self.dz[k] * self.FW_layers[1][k]
                 self.Percent_depletion[0][k] = (self.FC[k] - self.WC[0][k]) / (self.FC[k] - self.PWP[k])
             else:
                 self.WC[0][k] = Output_Layer_Array['WaterContent'].loc[kk]
                 self.Depletion[0][k] = Output_Layer_Array['Depletion'].loc[kk]
                 self.Percent_depletion[0][k] = Output_Layer_Array['PercentDepletion'].loc[kk]
-        for j in range(1, final_day - 1):
+        for j in range(1, self.NumDays - 1):
             self.Total_TAW_Fw[j][self.Num_layers + 2] = 0
             for k in range(self.Num_layers + 1, 0, -1):
                 self.Total_TAW_Fw[j][k] = self.Total_TAW_Fw[j][k+1] + self.TAW[k]*self.FW_layers[j][k]            
-                print('TAW stuff', self.Total_TAW_Fw[j], self.TAW[k], self.FW_layers[j][k])
             k = self.Num_layers + 1
             while self.Depth[k] < self.Root[j]/1000:
                 k = k - 1
@@ -1068,11 +752,11 @@ class model(plantings, fields, soil, weather):
             self.PWPave[j] = self.PWPave[j] / (self.Num_layers - self.Bottom_layer[j] + 1)
         sum_ET = 0
         for k in range(int(self.Bottom_layer[1]), self.Num_layers + 2):
-            sum_ET = sum_ET + self.ETfrac[k]
+            sum_ET = sum_ET + self.ET_fractions[1][k]
 
         if self.No_ET_frac_Adjustment == 1:
             for k in range(1, self.Num_layers + 2):
-                self.Act_frac[1][k] = self.ETfrac[k] / sum_ET
+                self.Act_frac[1][k] = self.ET_fractions[1][k] / sum_ET
         else:
             Remaining = 1
             Sum_act_frac = 0
@@ -1081,11 +765,11 @@ class model(plantings, fields, soil, weather):
                 if self.Fw[k] < self.Fw_y[k]:
                     self.Depletion[0][k] = self.Depletion[0][k] * self.Fw[k] / self.Fw_y[k]
                 if (self.Depletion[0][k] > self.RAW[k] * self.Fw[k]) and (self.Depletion[0][k] < self.TAW[k] * self.Fw[k]):
-                    self.Act_frac[1][k] = self.ETfrac[k] * (self.TAW[k] * self.Fw[k] - self.Depletion[0][k]) / ((self.TAW[k] - self.RAW[k]) * self.Fw[k])/sum_ET
+                    self.Act_frac[1][k] = self.ET_fractions[j][k] * (self.TAW[k] * self.Fw[k] - self.Depletion[0][k]) / ((self.TAW[k] - self.RAW[k]) * self.Fw[k])/sum_ET
                 elif self.Depletion[0][k] > self.TAW[k] * self.Fw[k]:
                     self.Act_frac[1][k] = 0
                 else:
-                    self.Act_frac[1][k] = self.ETfrac[k]/sum_ET
+                    self.Act_frac[1][k] = self.ET_fractions[1][k]/sum_ET
                 Sum_act_frac = Sum_act_frac + self.Act_frac[1][k]
             
             if Sum_act_frac > 0:
@@ -1095,7 +779,7 @@ class model(plantings, fields, soil, weather):
         if self.Salinity_simulation == 1:
             for k in range(1, self.Num_layers + 2):
                 kk = Output_Layer_Array[Output_Layer_Array['Layer']==k].index.values
-                if Last_DOE == 0:                                                          #The day of experiment, integer j
+                if self.SimStartDOY <= self.StartDOY:                                                          #The day of experiment, integer j
                     self.ECe[0][k] = self.InitECe[k]
                     self.EC[0][k] = self.ECe[0][k] / self.WC[0][k] * self.ts[k]  
                 else:
@@ -1117,7 +801,7 @@ class model(plantings, fields, soil, weather):
         if self.Nitrogen_simulation == 1:
             for k in range(1,  self.Num_layers + 2):
                 kk = Output_Layer_Array[Output_Layer_Array['Layer']==k].index.values
-                if Last_DOE == 0:                                                          #The day of experiment, integer j
+                if self.SimStartDOY <= self.StartDOY:                                                          #The day of experiment, integer j
                     self.N_soil[0][k] = self.InitsoilN[k]       #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
                     self.N[0][k] = self.N_soil[0][k] * self.bd[k] /self.WC[0][k]                #Nitrate concentration in soil water, mg/L, decimal, 8 digits
                     self.kgha[0][k] = self.N[0][k] * self.dz[k] * 10 * self.WC[0][k]
@@ -1125,35 +809,13 @@ class model(plantings, fields, soil, weather):
                     self.N_soil[0][k] = Output_Layer_Array['Nitratemgkg'].loc[kk]       #Nitrate concentration per mass of soil in each layer, mg/kg, decimal, 8 digits
                     self.N[0][k] = Output_Layer_Array['Nitrate'].loc[kk]               #Nitrate concentration in soil water, mg/L, decimal, 8 digits
                     self.kgha[0][k] = self.N[0][k] * self.dz[k] * 10 * self.WC[0][k]
-            for i in range(1, final_day):
+            for i in range(1, self.NumDays):
                 self.N_upt[i] = self.Seasonal_N_uptake * self.Nitrogen_Kcb[i] / self.Nitrogen_frac_sum
                 temp = self.T_bar + self.A0 * np.sin(2 * 3.14159 / 365 * (self.DOY[i] - self.tm))
                 for k in range(1, self.Num_layers + 1):
                     self.fmntemp[i][k] = self.Qtemp ** ((temp - 20) / 10)
                     if self.fmntemp[i][k] > 1.5:
                         self.fmntemp[i][k] = 1.5 - (self.fmntemp[i][k] - 1.5) / 5
-
-    def ParameterizeIrrigation(self, first_day, final_day, IrrigationArray):
-        IrrigationArray = IrrigationArray.reset_index()
-        del IrrigationArray['index']
-        self.DateI = IrrigationArray['Date']   #The date (not the planting date) of the record, mm/dd/yyyy
-        self.IrrDepth = np.array(IrrigationArray['Depth_mm'])                 #depth of irrigation, mm, decimal 5 digits
-        self.IrrTime = np.array(IrrigationArray['Time_hr'])                   #time of irrigation, decimal 5 digits
-        self.Irrigation_depth = np.zeros(final_day)
-        self.Irrigation_time = np.zeros(final_day)
-        for i in range(0, len(self.DateI)):
-            if((self.DateI[i] >= self.DateP + timedelta(days = int(first_day))) & (self.DateI[i] < self.DateP  + timedelta(days = int(first_day + final_day)))):
-                self.Irrigation_depth[(self.DateI[i] - self.DateP).days - first_day] = self.IrrDepth[i]
-                self.Irrigation_time[(self.DateI[i] - self.DateP).days - first_day] = self.IrrTime[i]  #Reads the irrigation time (if there) into the correct position in the irrigation time array
-
-    def ET_daily(self, ET_dailyArray):
-        self.ETdailycid = np.array(ET_dailyArray['cid'])   #The date (not the planting date) of the record, mm/dd/yyyy
-        self.ETdailyCropname = np.array(ET_dailyArray['Crop_name'])                   #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
-        self.DOED = np.array(ET_dailyArray['DOE'])           #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.ETKcb_daily = np.array(ET_dailyArray['Crop_coefficient'])           #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
-        self.ETRoot_daily = np.array(ET_dailyArray['Root_zone_depth'])                #The position (location) in the planting, integer
-        self.ETCrop_height_daily = np.array(ET_dailyArray['Crop_height'])                 #depth of irrigation, mm, decimal 5 digits
-        self.ETone_minus_c_daily = np.array(ET_dailyArray['one_minus_C'])                   #time of irrigation, decimal 5 digits
 
     def Create_output_layer_arrays(self, Num, Num_days, Num_layers):
         self.date_layer_out = np.empty(Num, dtype = dt)
@@ -1195,6 +857,35 @@ class model(plantings, fields, soil, weather):
                 self.Mass_salt_layer_out[l] = self.Mass_salt[j][k]
                 self.N_layer_out[l] = self.N[j][k]
                 self.N_soil_layer_out[l] = self.N_soil[j][k]
+
+
+
+class model(plantings, weather, fields, status, soil, ET_fractions, Wetting_fractions, output, output_layers, irrigation, ET_daily, RS_daily):
+    def __init__(self, Planting_Array,
+                 Weather_Array, 
+                 Field_Array, 
+                 Status_Array,
+                 Soil_Array,
+                 ETfrac_Array, 
+                 Wetting_Array, 
+                 Output_Array,
+                 Output_Layers_Array,
+                 Irrigation_Array,
+                 ET_Daily_Array,
+                 RS_Daily_Array):
+        plantings.__init__(self, Planting_Array)
+        weather.__init__(self, Weather_Array)
+        fields.__init__(self, Field_Array)
+        status.__init__(self, Status_Array)
+        soil.__init__(self, Soil_Array)
+        ET_fractions.__init__(self, ETfrac_Array)
+        Wetting_fractions.__init__(self, Wetting_Array)
+        output.__init__(self,Output_Array)
+        output_layers.__init__(self, Output_Layers_Array)
+        irrigation.__init__(self, Irrigation_Array)
+        ET_daily.__init__(self, ET_Daily_Array)
+        RS_daily.__init__(self, RS_Daily_Array)
+        
        
     def wetting_front(self, j):
         m = np.zeros(self.Num_layers + 2) 
