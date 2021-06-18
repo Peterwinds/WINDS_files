@@ -9,11 +9,6 @@ import numpy as np
 from datetime import datetime as dt
 from datetime import timedelta
 
-
-
-
-
-
 def hg(a, b, C, z):
     value = 1
     hg = value
@@ -263,7 +258,9 @@ class fields:
     
 class soil:
     def __init__(self, SoilArray):
+        print('soil array 1',SoilArray)
         SoilArray = SoilArray.sort_values('Layer')
+        print('soil array 2', SoilArray)
         self.FieldNum = np.array(SoilArray['Field num'])                            #The long random identifier that represents the field, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.LayerNumber = np.array(SoilArray['Layer'])
         self.Depth = np.array(SoilArray['Depth'])  
@@ -371,9 +368,10 @@ class irrigation:
         self.Depth_ref = np.array(IrrigationArray['Ref_mm']) 
         Sec_name = 'Sec_' + str(self.IrrSection)
         self.Multiplier = np.array(IrrigationArray[Sec_name])
-        self.DOY = np.array(IrrigationArray['DOY'])
+        self.IrrigationDOY = np.array(IrrigationArray['DOY'])
         for i in range(0, len(IrrigationArray)):
-            self.Irrigation_depth[self.DOY[i]-self.StartDOY] = self.Depth_ref[i]*self.Multiplier[i]
+            if(self.IrrigationDOY[i]-self.SimStartDOY)<len(self.Irrigation_depth):
+                self.Irrigation_depth[self.IrrigationDOY[i]-self.SimStartDOY] = self.Depth_ref[i]*self.Multiplier[i]
 
 
 class status:
@@ -686,7 +684,7 @@ class output:
                     self.Nitrogen_frac_sum = 1
 
 class output_layers:
-    def __init__(self, Output_Layer_Array):
+    def __init__(self, Output_Layer_Array, Status_Array):
         self.DAP = np.zeros((self.NumDays, self.Num_layers + 2))                      #days after planting, integer
         self.PlantingIDL = np.zeros((self.NumDays, self.Num_layers + 2))              #The long random identifier that represents the planting, for example, 9a649ac3a4353ffe6d67fdad0c6bf3a9
         self.PlantingNameL = np.zeros((self.NumDays, self.Num_layers + 2))            #The name of the planting (text), normally includes owner name, field name, crop, and year, such as GaryField1Wheat2017
@@ -722,7 +720,7 @@ class output_layers:
         
         for k in range(1, self.Num_layers + 2):
             if self.SimStartDOY <= self.StartDOY:   
-                self.WC[0][k] = self.InitWC[k]
+                self.WC[0][k] = Status_Array['InitWC'].loc[Status_Array['layer']==k]
                 print('initial water content',self.InitWC[k])
                 self.Depletion[0][k] = (self.FC[k] - self.WC[0][k]) * self.dz[k] * self.FW_layers[1][k]
                 self.Percent_depletion[0][k] = (self.FC[k] - self.WC[0][k]) / (self.FC[k] - self.PWP[k])
@@ -819,10 +817,9 @@ class output_layers:
 
     def Create_output_layer_arrays(self, Num, Num_days, Num_layers):
         self.date_layer_out = np.empty(Num, dtype = dt)
-        self.Days_after_planting_layer = np.zeros(Num)
         self.pid_layer_out  = np.empty(Num, dtype = object)
         self.planting_name_layer_out =  np.empty(Num, dtype = object)
-        self.location_layer_out = np.zeros(Num)
+        self.Days_after_planting_layer = np.empty(Num)
         self.layer_out = np.zeros(Num)
         self.WC_layer_out = np.zeros(Num)
         self.EC_out = np.zeros(Num)
@@ -838,14 +835,13 @@ class output_layers:
         self.N_soil_layer_out = np.zeros(Num)
         
         l = 0
-        for j in range(1, Num_days):
+        for j in range(1, self.NumDays):
             for k in range(1, Num_layers + 2):
                 l = l + 1
                 self.date_layer_out[l] = self.datelist[j]
-                self.Days_after_planting_layer[l] = self.DOE[j]
-                self.pid_layer_out[l]  = self.PlantingIDO[j]
-                self.planting_name_layer_out[l] = self.PlantingNameO[j]
-                self.location_layer_out[l] = self.LocationO[j]
+                self.pid_layer_out[l]  = self.PlantingNum
+                self.planting_name_layer_out[l] = self.PlantingName
+                self.Days_after_planting_layer[l] = j + self.SimStartDOY
                 self.layer_out[l] = k
                 self.WC_layer_out[l] = self.WC[j][k]
                 self.Depletion_layer_out[l] = self.Depletion[j][k]
@@ -881,7 +877,7 @@ class model(plantings, weather, fields, status, soil, ET_fractions, Wetting_frac
         ET_fractions.__init__(self, ETfrac_Array)
         Wetting_fractions.__init__(self, Wetting_Array)
         output.__init__(self,Output_Array)
-        output_layers.__init__(self, Output_Layers_Array)
+        output_layers.__init__(self, Output_Layers_Array, Status_Array)
         irrigation.__init__(self, Irrigation_Array)
         ET_daily.__init__(self, ET_Daily_Array)
         RS_daily.__init__(self, RS_Daily_Array)

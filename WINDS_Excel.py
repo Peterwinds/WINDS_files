@@ -13,6 +13,25 @@ from sqlalchemy import create_engine
 pathprefix='/home/ecoslacker/Documents/WINDS_Data/'
 # sys.path.append(pathprefix)
 
+# db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevzppe.us-west-1.rds.amazonaws.com:3306/winds_test')
+
+# #======================Block 0: Adding Libraries=============================
+
+# import WINDSfunctionsandclasses  as wmf
+
+# Planting_Array=pd.read_sql('SELECT * from plantings',con=db)  #Reads all data from mysql db
+# Field_Array=pd.read_sql('SELECT * from fields',con=db)
+# Status_Array=pd.read_sql('SELECT * from Status',con=db)
+# Soil_Array=pd.read_sql('SELECT * from field_soil_layers',con=db)
+# Irrigation_Array=pd.read_sql('SELECT * from irrigation_activity',con=db)
+# ET_Daily_Array=pd.read_sql('SELECT * from et_daily',con=db)
+# RS_Daily_Array=pd.read_sql('SELECT * from RS_daily',con=db)
+# Output_Array=pd.read_sql('SELECT * from Output',con=db)
+# Output_Layer_Array=pd.read_sql('SELECT * from LayerOutput',con=db)
+# WettingArray=pd.read_sql('SELECT * from Wetted_fractions', con=db)
+# ET_frac_Array = pd.read_sql('SELECT * from ET_fractions', con=db)
+# Status_Array = pd.read_sql('SELECT * from Status', con=db)
+
 db=create_engine('mysql://UofABEWINDS:WINDSAWSPort2020@windsdatabase-1.cdzagwevzppe.us-west-1.rds.amazonaws.com:3306/winds_test')
 
 #======================Block 0: Adding Libraries=============================
